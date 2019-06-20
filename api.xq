@@ -1,6 +1,6 @@
 module namespace api = "xforms/bjx/api";
 
-(: import module namespace api="xforms/bjx/game" at 'api.xq';
+(: import module namespace api="xforms/bjx/api" at 'api.xq';
 import module namespace card="xforms/bjx/card" at 'card.xq';
 import module namespace dealer="xforms/bjx/dealer" at 'dealer.xq';
 import module namespace deck="xforms/bjx/deck" at 'deck.xq';
@@ -8,6 +8,13 @@ import module namespace game="xforms/bjx/game" at 'game.xq';
 import module namespace hand="xforms/bjx/hand" at 'hand.xq';
 import module namespace helper="xforms/bjx/helper" at 'helper.xq';
 import module namespace player="xforms/bjx/player" at 'player.xq'; :)
+
+import module namespace card="xforms/bjx/card" at 'card.xq';
+import module namespace dealer="xforms/bjx/dealer" at 'dealer.xq';
+import module namespace deck="xforms/bjx/deck" at 'deck.xq';
+import module namespace game="xforms/bjx/game" at 'game.xq';
+import module namespace hand="xforms/bjx/hand" at 'hand.xq';
+import module namespace player="xforms/bjx/player" at 'player.xq';
 
 import module namespace ws = "http://basex.org/modules/ws";
 import module namespace request = "http://exquery.org/ns/request";
@@ -77,7 +84,7 @@ declare
 %rest:path("/bjx/games/{$gameId}/draw")
 %rest:GET
 function api:drawGame($gameId) {
-  let $game := $api:db/games/game[position() = $gameId]
+  let $game := $api:db/games/game[@id = $gameId]
   let $wsIds := ws:ids()
   return (
     for $wsId in $wsIds
@@ -86,45 +93,12 @@ function api:drawGame($gameId) {
     let $path := ws:get($wsId, "path")
     let $name := ws:get($wsId, "name")
     let $destinationPath := concat("/bjx/", $path, "/", $gameId, "/", $name)
-    let $data := 
-    <div>
-      <p>Hello, {$name}</p>
-      {
-        for $p in $game/player
-        return <p>{data($p/@name)}: {count($p/card)} cards</p>
-      }
-      <form action="/bjx/games/{$gameId}/{$name}/hit" method="POST" target="hiddenFrame">
-        <input type="submit"/>
-       </form>
-       <iframe class="hiddenFrame" name="hiddenFrame"/>
-    </div>
+    let $data := game:draw($game, $name)
     return (
       trace(concat("$destinationPath=", $destinationPath)),
       ws:sendchannel(fn:serialize($data), $destinationPath)
     )
   )
-};
-
-declare
-%rest:path("/bjx/games/{$gameId}/{$name}/hit")
-%rest:POST
-%updating
-function api:hitPlayer($gameId, $name as xs:string) {
-  let $game := $api:db/games/game[position() = $gameId]
-  let $player := $game/player[@name=$name]
-  return (
-    insert node <card/> into $player,
-    update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
-  )
-};
-
-declare
-%rest:path("/bjx/games")
-%rest:POST
-%updating
-function api:createGame() {
-  insert node <game></game> into $api:db/games,
-  update:output(web:redirect("/bjx/games"))
 };
 
 declare
@@ -148,16 +122,124 @@ declare
 %rest:form-param("name", "{$name}", "anonymous")
 %updating
 function api:joinGame($gameId, $name) {
-  let $name := (
-    if ($name = '')
+  let $name := api:uniqueName($gameId, $name)
+  return (
+    player:joinGame($gameId, $name),
+    update:output(web:redirect(concat("/bjx/games/", $gameId, "/", $name)))
+  )
+};
+
+(: obsolete, simply leave via GET and let bjxws:stompdisconnect() handle everything :)
+declare
+%rest:path("bjx/games/{$gameId}/{$name}/leave")
+%rest:POST
+%updating
+function api:leaveGame($gameId, $name) {
+  let $game := $api:db/games/game[@id = $gameId]
+  let $player := $game/player[@name=$name]
+  return (
+    player:leave($player),
+    update:output(web:redirect("/bjx"))
+  )
+};
+
+declare
+%rest:path("/bjx/games/{$gameId}/{$name}/hit")
+%rest:POST
+%updating
+function api:hitPlayer($gameId, $name as xs:string) {
+  let $game := $api:db/games/game[@id = $gameId]
+  let $player := $game/player[@name=$name]
+  return (
+    player:hit($player),
+    update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
+  )
+};
+
+(: declare
+%rest:path("/bjx/games/{$gameId}/{$name}/stand") 
+%rest:POST
+%updating
+function api:standPlayer($gameId, $name as xs:string) {
+  let $game := $api:db/games/game[@id = $gameId]
+  let $player := $game/player[@name=$name]
+  let $isLast := $player/position() = count($game/player)
+  return (
+    if (not($isLast))
     then (
-      "anonymous"
-    ) else (
+      player:nextPlayer($player)
+    )
+    else (
+      dealer:play($game/dealer),
+      game:evaluate($game)
+    ),
+    update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
+  )
+}; :)
+
+declare
+%rest:path("bjx/games/{$gameId}/evaluate")
+%rest:POST
+%updating
+function api:evaluateGame($gameId) {
+  let $game := $api:db/games/game[@id = $gameId]
+  return (
+    game:evaluate($game),
+    update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
+  )
+};
+
+
+declare
+%rest:path("/bjx/games/{$gameId}/{$name}/stand") 
+%rest:POST
+%updating
+function api:standPlayer($gameId, $name as xs:string) {
+  let $game := $api:db/games/game[@id = $gameId]
+  let $player := $game/player[@name=$name]
+  return (
+    player:stand($player),
+    update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
+  )
+};
+
+declare
+%rest:path("/bjx/games/{$gameId}/newRound")
+%rest:POST
+%updating
+function api:newRound($gameId) {
+  let $game := $api:db/games/game[@id = $gameId]
+  return (
+    game:newRound($game),
+    update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
+  )
+
+};
+
+declare
+%rest:path("/bjx/games")
+%rest:POST
+%updating
+function api:createGame() {
+  game:updateCreate(),
+  update:output(web:redirect(concat("/bjx/games/", game:latestId() + 1, "/join")))
+};
+
+
+(:
+Helper function 
+appends '_' to otherwise non-unique names
+:)
+declare
+function api:uniqueName($gameId, $name) {
+  let $game := $api:db/games/game[@id=$gameId]
+  return (
+    if (not(exists($game/player[@name=$name])))
+    then (
       $name
     )
-  )
-  return (
-    insert node <player name="{$name}"/> into $api:db/games/game[position() = $gameId],
-    update:output(web:redirect(concat("/bjx/games/", $gameId, "/", $name)))
+    else (
+      api:uniqueName($gameId, concat($name, "_"))
+    )
   )
 };

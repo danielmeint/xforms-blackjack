@@ -3,7 +3,10 @@ xquery version "3.0";
 module namespace bjxws = "TicTacToe/WS";
 
 import module namespace ws = "http://basex.org/modules/ws";
-import module namespace api = "xforms/bjx/api" at "api.xq";
+
+
+import module namespace api="xforms/bjx/api" at "api.xq";
+import module namespace player="xforms/bjx/player" at 'player.xq';
 
 (: WS STOMP connect, increase client count by 1 :)
 declare
@@ -15,8 +18,16 @@ function bjxws:stompconnect(){
 (: WS STOMP disconnect, decrease client count by 1 :)
 declare
 %ws:close("/bjx")
+%updating
 function bjxws:stompdisconnect(){
-    trace(concat("BJX: WS client disconnected with id ", ws:id(), " and name ", ws:get(ws:id(), "name")))
+  let $wsId   := ws:id()
+  let $gameId := ws:get($wsId, "gameId")
+  let $name   := ws:get($wsId, "name")
+  let $player := $api:db/games/game[@id=$gameId]/player[@name=$name]
+  return (
+    player:leave($player),
+    update:output(trace(concat("BJX: WS client disconnected - wsId: ", $wsId, ", gameId: ", $gameId, ", name: ", $name)))
+  )
 };
 
 (: WS STOMP subscribe, gets the header parameter from the WebSocket request and
@@ -30,9 +41,9 @@ declare
 
 %updating
 function bjxws:subscribe($app, $path, $gameId, $name){
-    ws:set(ws:id(), "app", "bjx"),
-    ws:set(ws:id(), "path", $path),
-    ws:set(ws:id(), "gameId", $gameId),
-    ws:set(ws:id(), "name", $name),
-    update:output(trace(concat("BJX: WS client with id ", ws:id(), " subscribed to ", $app, "/", $path, "/", $gameId, "/", $name)))
+  ws:set(ws:id(), "app", "bjx"),
+  ws:set(ws:id(), "path", $path),
+  ws:set(ws:id(), "gameId", $gameId),
+  ws:set(ws:id(), "name", $name),
+  update:output(trace(concat("BJX: WS client with wsId ", ws:id(), " subscribed to ", $app, "/", $path, "/", $gameId, "/", $name)))
 };
