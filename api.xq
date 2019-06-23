@@ -19,6 +19,8 @@ import module namespace player="xforms/bjx/player" at 'player.xq';
 import module namespace ws = "http://basex.org/modules/ws";
 import module namespace request = "http://exquery.org/ns/request";
 
+import module namespace session = 'http://basex.org/modules/session';
+
 declare variable $api:db := db:open("bjx");
 
 declare
@@ -26,14 +28,144 @@ declare
 %rest:GET
 %output:method("html")
 function api:entry() {
-  <html>
-  <body>
-    <h1>Menu</h1>
+  if (session:get('name'))
+  then (
+    api:main() 
+  ) else (
+    api:login()
+  )
+};
+
+declare function api:main() {
+  <div>
+    Logged in as { session:get('name') }
     <form action='/bjx/games' method='post'>
       <input type='submit' value='Create new game'/>
     </form>
-  </body>
-  </html>
+    <a href="/bjx/games">Load game</a>
+    <a href="/bjx/logout">Logout</a>
+  </div>
+};
+
+declare function api:login() {
+    <div class='warning'>Please enter your credentials:</div>,
+    <form action='/bjx/login' method='post'>
+      <table>
+        <tr>
+          <td><b>Name:</b></td>
+          <td>
+            <input size='30' name='name' id='user' autofocus=''/>
+          </td>
+        </tr>
+        <tr>
+          <td><b>Password:</b></td>
+          <td>{
+            <input size='30' type='password' name='pass'/>,
+            <button type='submit'>Login</button>
+          }</td>
+        </tr>
+        <tr>
+          <td>Or</td>
+          <td><a href='/bjx/signup'>Sign Up Here!</a></td>
+        </tr>
+      </table>
+    </form>
+};
+
+declare
+%rest:GET
+%rest:path('bjx/signup')
+%output:method("html")
+%rest:query-param("error", "{$error}")
+function api:sign-up($error) {
+  <form action='/bjx/signup' method='post'>
+    <p>{$error}</p>
+    <table>
+      <tr>
+        <td><b>Name:</b></td>
+        <td>
+          <input size='30' name='name' id='user' autofocus=''/>
+        </td>
+      </tr>
+      <tr>
+        <td><b>Password:</b></td>
+        <td>{
+          <input size='30' type='password' name='pass'/>,
+          <button type='submit'>Create Account</button>
+        }</td>
+      </tr>
+      <tr>
+        <td>Or</td>
+        <td><a href='/bjx'>Log In Here!</a></td>
+      </tr>
+    </table>
+  </form>
+};
+
+declare
+%rest:POST
+%rest:path("/bjx/signup")
+%rest:query-param("name", "{$name}")
+%rest:query-param("pass", "{$pass}")
+%updating
+function api:user-create(
+  $name as xs:string,
+  $pass as xs:string
+) as empty-sequence() {
+  try {
+    if(user:exists($name)) then (
+      error((), 'User already exists.')
+    ) else (
+      user:create($name, $pass, 'none')
+    ),
+    update:output(web:redirect("/bjx"))
+  } catch * {
+    update:output(web:redirect("/bjx/signup", map { 'error': $err:description }))
+  }
+};
+
+declare
+%rest:POST
+%rest:path('/bjx/signup-check')
+%rest:query-param('name', '{$name}')
+%rest:query-param('pass', '{$pass}')
+function api:signup-check(
+  $name as xs:string,
+  $pass as xs:string
+) as element(rest:response) {
+  
+};
+
+declare
+%rest:POST
+%rest:path('/bjx/login')
+%rest:query-param('name', '{$name}')
+%rest:query-param('pass', '{$pass}')
+function api:login-check(
+  $name  as xs:string,
+  $pass  as xs:string
+) as element(rest:response) {
+  try {
+    user:check($name, $pass),
+    session:set('name', $name)
+  } catch user:* {
+    (: login fails: no session info is set :)
+  },
+  web:redirect('/bjx')
+};
+
+declare
+%rest:path('/bjx/logout')
+function api:logout() as element(rest:response) {
+  session:get('name') ! api:close(.),
+  session:delete('name'),
+  web:redirect('/bjx')
+};
+
+declare function api:close($name  as  xs:string) as empty-sequence() {
+  for $wsId in ws:ids()
+  where ws:get($wsId, 'name') = $name
+  return ws:close($wsId)
 };
 
 declare
@@ -78,6 +210,30 @@ function api:createGame() {
 };
 
 declare
+%rest:path("/bjx/games/{$gameId}")
+%rest:DELETE
+%updating
+function api:deleteGame($gameId as xs:integer) {
+    let $game := $api:db/games/game[@id = $gameId]
+    return (
+      game:delete($game),
+      update:output(web:redirect("/bjx"))
+    )
+};
+
+declare
+%rest:path("/bjx/games/{$gameId}/delete")
+%rest:POST
+%updating
+function api:deleteGamePOST($gameId as xs:integer) {
+    let $game := $api:db/games/game[@id = $gameId]
+    return (
+      game:delete($game),
+      update:output(web:redirect("/bjx"))
+    )
+};
+
+declare
 %rest:path("/bjx/games/{$gameId}/join")
 %rest:GET
 %output:method("html")
@@ -85,7 +241,6 @@ function api:joinGameForm($gameId) {
   <html>
     <body>
       <form action='/bjx/games/{$gameId}/join' method='POST'>
-        <input type='text' name='name' />
         <input type='submit' />
       </form>
     </body>
@@ -95,21 +250,21 @@ function api:joinGameForm($gameId) {
 declare
 %rest:path("/bjx/games/{$gameId}/join")
 %rest:POST
-%rest:form-param("name", "{$name}", "anonymous")
 %updating
-function api:joinGame($gameId, $name) {
-  let $name := api:uniqueName($gameId, $name)
+function api:joinGame($gameId) {
+  let $name := session:get('name')
   return (
     player:joinGame($gameId, $name),
-    update:output(web:redirect(concat("/bjx/games/", $gameId, "/", $name)))
+    update:output(web:redirect(concat("/bjx/games/", $gameId)))
   )
 };
 
 declare
-%rest:path("/bjx/games/{$gameId}/{$name}")
+%rest:path("/bjx/games/{$gameId}")
 %rest:GET
 %output:method("html")
-function api:returnGame($gameId, $name) {
+function api:returnGame($gameId) {
+  let $name := session:get('name')
   let $hostname := request:hostname()
   let $port := request:port()
   let $address := concat($hostname,":",$port)
@@ -214,38 +369,5 @@ function api:newRound($gameId) {
   return (
     game:newRound($game),
     update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
-  )
-};
-
-(: obsolete, simply leave via GET and let bjxws:stompdisconnect() handle everything :)
-declare
-%rest:path("bjx/games/{$gameId}/{$name}/leave")
-%rest:POST
-%updating
-function api:leaveGame($gameId, $name) {
-  let $game := $api:db/games/game[@id = $gameId]
-  let $player := $game/player[@name=$name]
-  return (
-    player:leave($player),
-    update:output(web:redirect("/bjx"))
-  )
-};
-
-
-(:
-Helper function 
-appends '_' to otherwise non-unique names
-:)
-declare
-function api:uniqueName($gameId, $name) {
-  let $game := $api:db/games/game[@id=$gameId]
-  return (
-    if (not(exists($game/player[@name=$name])))
-    then (
-      $name
-    )
-    else (
-      api:uniqueName($gameId, concat($name, "_"))
-    )
   )
 };

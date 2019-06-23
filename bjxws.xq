@@ -4,7 +4,6 @@ module namespace bjxws = "TicTacToe/WS";
 
 import module namespace ws = "http://basex.org/modules/ws";
 
-
 import module namespace api="xforms/bjx/api" at "api.xq";
 import module namespace player="xforms/bjx/player" at 'player.xq';
 

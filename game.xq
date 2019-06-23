@@ -14,6 +14,12 @@ function game:updateCreate() {
 
 declare
 %updating
+function game:delete($self) {
+  delete node $self
+};
+
+declare
+%updating
 function game:play($self) {
   replace value of node $self/@state with 'playing',
   for $player at $index in $self/player
