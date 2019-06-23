@@ -14,6 +14,18 @@ function game:updateCreate() {
 
 declare
 %updating
+function game:play($self) {
+  replace value of node $self/@state with 'playing',
+  for $player at $index in $self/player
+  return (
+    if ($index = 1)
+    then (replace value of node $player/@state with 'active')
+    else (replace value of node $player/@state with 'inactive')
+  )
+};
+
+declare
+%updating
 function game:evaluate($self) {
   let $dealer := $self/dealer
   let $resTuple := deck:drawTo17($dealer/hand, $dealer/deck)
@@ -68,6 +80,10 @@ declare function game:draw($self, $name) {
     <form action="/bjx/games/{$self/@id}/newRound" method="POST" target="hiddenFrame">
       <input type="submit" value="newRound"/>
     </form>
+    <form action="/bjx/games/{$self/@id}/{$name}/bet" method="POST" target="hiddenFrame">
+      <input type="number" name="bet"/>
+      <input type="submit" value = "Bet"/>
+    </form>
     <form action="/bjx/games/{$self/@id}/{$name}/hit" method="POST" target="hiddenFrame">
       <input type="submit" value="Hit"/>
     </form>
@@ -80,6 +96,12 @@ declare function game:draw($self, $name) {
     <a href="/bjx/games/{$self/@id}/{$name}/leave">Leave via GET</a>
     <iframe class="hidden hiddenFrame" name="hiddenFrame"/>
   </div>
+};
+
+declare function game:drawFull($self, $name) {
+  let $xsl := doc('../static/bjx/xslt/game.xsl')
+  let $map := map{ "name" : $name }
+  return xslt:transform($self, $xsl, $map)
 };
 
 declare function game:reset($self) {

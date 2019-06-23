@@ -14,16 +14,38 @@ function player:joinGame($gameId as xs:integer, $name as xs:string) {
   let $game := $api:db/games/game[@id=$gameId]
   let $newPlayer := player:setName(player:newPlayer(), $name)
   return (
-    insert node $newPlayer into $game
+    if (exists($game/player))
+    then (
+      insert node $newPlayer into $game
+    ) else (
+      (: first player to join :)
+      let $newGame := game:reset(game:setPlayers($game, ($newPlayer)))
+      return (
+        replace node $game with $newGame
+      )
+    )
   )
 };
 
 declare
 %updating
 function player:leave($self) {
+  delete node $self
+};
+
+declare
+%updating
+function player:bet($self, $bet) {
   let $game := $self/..
+  let $isLast := not(exists($self/following-sibling::player))
   return (
-    delete node $self
+    replace value of node $self/bet with $bet,
+    if ($isLast)
+    then (
+      game:play($game)
+    ) else (
+      player:nextPlayer($self)
+    )
   )
 };
 

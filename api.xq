@@ -49,56 +49,32 @@ function api:setup() {
 declare
 %rest:path("/bjx/games")
 %rest:GET
+%output:method("html")
 function api:returnGames() {
-  $api:db/games
+  let $stylesheet := doc("../static/bjx/xslt/lobby.xsl")
+  let $games := $api:db/games
+  let $map := map{ "screen": "games" }
+  return xslt:transform($games, $stylesheet, $map)
 };
 
 declare
-%rest:path("/bjx/games/{$gameId}/{$name}")
+%rest:path("/bjx/highscores")
 %rest:GET
 %output:method("html")
-function api:returnGame($gameId, $name) {
-  let $hostname := request:hostname()
-  let $port := request:port()
-  let $address := concat($hostname,":",$port)
-  let $websocketURL := concat("ws://", $address, "/ws/bjx") (: or /ws/bjx/games/{$gameId} ?? :)
-  let $getURL := concat("http://", $address, "/bjx/games/", $gameId, "/draw")
-  let $subscription := concat("/bjx/games/", $gameId, "/", $name)
-  let $html :=
-      <html>
-          <head>
-              <title>BJX</title>
-              <script src="/static/tictactoe/JS/jquery-3.2.1.min.js"></script>
-              <script src="/static/tictactoe/JS/stomp.js"></script>
-              <script src="/static/tictactoe/JS/ws-element.js"></script>
-              <link rel="stylesheet" type="text/css" href="/static/blackjack/style.css"/>
-          </head>
-          <body>
-              <ws-stream id="bjx" url="{$websocketURL}" subscription="{$subscription}" geturl="{$getURL}"/>
-          </body>
-      </html>
-  return $html
+function api:returnHighscores() {
+  let $stylesheet := doc("../static/bjx/xslt/lobby.xsl")
+  let $games := $api:db/games
+  let $map := map{ "screen": "highscores" }
+  return xslt:transform($games, $stylesheet, $map)
 };
 
 declare
-%rest:path("/bjx/games/{$gameId}/draw")
-%rest:GET
-function api:drawGame($gameId) {
-  let $game := $api:db/games/game[@id = $gameId]
-  let $wsIds := ws:ids()
-  return (
-    for $wsId in $wsIds
-    where ws:get($wsId, "app") = "bjx" and ws:get($wsId, "gameId") = $gameId
-    (: might need another check for gameId:)
-    let $path := ws:get($wsId, "path")
-    let $name := ws:get($wsId, "name")
-    let $destinationPath := concat("/bjx/", $path, "/", $gameId, "/", $name)
-    let $data := game:draw($game, $name)
-    return (
-      trace(concat("$destinationPath=", $destinationPath)),
-      ws:sendchannel(fn:serialize($data), $destinationPath)
-    )
-  )
+%rest:path("/bjx/games")
+%rest:POST
+%updating
+function api:createGame() {
+  game:updateCreate(),
+  update:output(web:redirect(concat("/bjx/games/", game:latestId() + 1, "/join")))
 };
 
 declare
@@ -129,17 +105,65 @@ function api:joinGame($gameId, $name) {
   )
 };
 
-(: obsolete, simply leave via GET and let bjxws:stompdisconnect() handle everything :)
 declare
-%rest:path("bjx/games/{$gameId}/{$name}/leave")
+%rest:path("/bjx/games/{$gameId}/{$name}")
+%rest:GET
+%output:method("html")
+function api:returnGame($gameId, $name) {
+  let $hostname := request:hostname()
+  let $port := request:port()
+  let $address := concat($hostname,":",$port)
+  let $websocketURL := concat("ws://", $address, "/ws/bjx") (: or /ws/bjx/games/{$gameId} ?? :)
+  let $getURL := concat("http://", $address, "/bjx/games/", $gameId, "/draw")
+  let $subscription := concat("/bjx/games/", $gameId, "/", $name)
+  let $html :=
+      <html>
+          <head>
+              <title>BJX</title>
+              <script src="/static/tictactoe/JS/jquery-3.2.1.min.js"></script>
+              <script src="/static/tictactoe/JS/stomp.js"></script>
+              <script src="/static/tictactoe/JS/ws-element.js"></script>
+              <link rel="stylesheet" type="text/css" href="/static/bjx/css/style.css"/>
+          </head>
+          <body>
+              <ws-stream id="bjx" url="{$websocketURL}" subscription="{$subscription}" geturl="{$getURL}"/>
+          </body>
+      </html>
+  return $html
+};
+
+declare
+%rest:path("/bjx/games/{$gameId}/draw")
+%rest:GET
+function api:drawGame($gameId) {
+  let $game := $api:db/games/game[@id = $gameId]
+  let $wsIds := ws:ids()
+  return (
+    for $wsId in $wsIds
+    where ws:get($wsId, "app") = "bjx" and ws:get($wsId, "gameId") = $gameId
+    (: might need another check for gameId:)
+    let $path := ws:get($wsId, "path")
+    let $name := ws:get($wsId, "name")
+    let $destinationPath := concat("/bjx/", $path, "/", $gameId, "/", $name)
+    let $data := game:drawFull($game, $name)
+    return (
+      trace(concat("BJX: drawing game to destination path: ", $destinationPath)),
+      ws:sendchannel(fn:serialize($data), $destinationPath)
+    )
+  )
+};
+
+declare
+%rest:path("/bjx/games/{$gameId}/{$name}/bet")
 %rest:POST
+%rest:form-param("bet", "{$bet}", 0) 
 %updating
-function api:leaveGame($gameId, $name) {
+function api:betPlayer($gameId, $name, $bet) {
   let $game := $api:db/games/game[@id = $gameId]
   let $player := $game/player[@name=$name]
   return (
-    player:leave($player),
-    update:output(web:redirect("/bjx"))
+    player:bet($player, $bet),
+    update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
   )
 };
 
@@ -156,40 +180,6 @@ function api:hitPlayer($gameId, $name as xs:string) {
   )
 };
 
-(: declare
-%rest:path("/bjx/games/{$gameId}/{$name}/stand") 
-%rest:POST
-%updating
-function api:standPlayer($gameId, $name as xs:string) {
-  let $game := $api:db/games/game[@id = $gameId]
-  let $player := $game/player[@name=$name]
-  let $isLast := $player/position() = count($game/player)
-  return (
-    if (not($isLast))
-    then (
-      player:nextPlayer($player)
-    )
-    else (
-      dealer:play($game/dealer),
-      game:evaluate($game)
-    ),
-    update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
-  )
-}; :)
-
-declare
-%rest:path("bjx/games/{$gameId}/evaluate")
-%rest:POST
-%updating
-function api:evaluateGame($gameId) {
-  let $game := $api:db/games/game[@id = $gameId]
-  return (
-    game:evaluate($game),
-    update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
-  )
-};
-
-
 declare
 %rest:path("/bjx/games/{$gameId}/{$name}/stand") 
 %rest:POST
@@ -204,6 +194,18 @@ function api:standPlayer($gameId, $name as xs:string) {
 };
 
 declare
+%rest:path("bjx/games/{$gameId}/evaluate")
+%rest:POST
+%updating
+function api:evaluateGame($gameId) {
+  let $game := $api:db/games/game[@id = $gameId]
+  return (
+    game:evaluate($game),
+    update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
+  )
+};
+
+declare
 %rest:path("/bjx/games/{$gameId}/newRound")
 %rest:POST
 %updating
@@ -213,16 +215,20 @@ function api:newRound($gameId) {
     game:newRound($game),
     update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
   )
-
 };
 
+(: obsolete, simply leave via GET and let bjxws:stompdisconnect() handle everything :)
 declare
-%rest:path("/bjx/games")
+%rest:path("bjx/games/{$gameId}/{$name}/leave")
 %rest:POST
 %updating
-function api:createGame() {
-  game:updateCreate(),
-  update:output(web:redirect(concat("/bjx/games/", game:latestId() + 1, "/join")))
+function api:leaveGame($gameId, $name) {
+  let $game := $api:db/games/game[@id = $gameId]
+  let $player := $game/player[@name=$name]
+  return (
+    player:leave($player),
+    update:output(web:redirect("/bjx"))
+  )
 };
 
 
