@@ -48,7 +48,7 @@ function game:evaluate($self) {
   )
 };
 
-declare function game:latestId() {
+declare function game:latestId() as xs:integer {
   if (exists($api:db/games/game)) 
   then (max($api:db/games/game/@id)) 
   else (0)

@@ -206,6 +206,7 @@ declare
 %updating
 function api:createGame() {
   game:updateCreate(),
+  (: TODO: skip this step; but: game needs to be created in DB before we can join (?) :)
   update:output(web:redirect(concat("/bjx/games/", game:latestId() + 1, "/join")))
 };
 
@@ -251,7 +252,7 @@ declare
 %rest:path("/bjx/games/{$gameId}/join")
 %rest:POST
 %updating
-function api:joinGame($gameId) {
+function api:joinGame($gameId as xs:integer) {
   let $name := session:get('name')
   return (
     player:joinGame($gameId, $name),
