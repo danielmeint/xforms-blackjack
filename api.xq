@@ -37,7 +37,12 @@ function api:entry() {
 };
 
 declare function api:main() {
-  <div>
+  let $stylesheet := doc("../static/bjx/xslt/lobby.xsl")
+  let $games := $api:db/games
+  let $map := map{ "screen": "menu", "name": session:get('name') }
+  return xslt:transform($games, $stylesheet, $map)
+  (: return (
+    <div>
     Logged in as { session:get('name') }
     <form action='/bjx/games' method='post'>
       <input type='submit' value='Create new game'/>
@@ -45,6 +50,7 @@ declare function api:main() {
     <a href="/bjx/games">Load game</a>
     <a href="/bjx/logout">Logout</a>
   </div>
+  ) :)
 };
 
 declare function api:login() {
@@ -269,7 +275,7 @@ function api:returnGame($gameId) {
   let $hostname := request:hostname()
   let $port := request:port()
   let $address := concat($hostname,":",$port)
-  let $websocketURL := concat("ws://", $address, "/ws/bjx") (: or /ws/bjx/games/{$gameId} ?? :)
+  let $websocketURL := concat("ws://", $address, "/ws/bjx")
   let $getURL := concat("http://", $address, "/bjx/games/", $gameId, "/draw")
   let $subscription := concat("/bjx/games/", $gameId, "/", $name)
   let $html :=
@@ -310,13 +316,20 @@ function api:drawGame($gameId) {
 };
 
 declare
+%rest:path("/bjx/games/{$gameId}/draw")
+%rest:POST
+function api:redraw($gameId) {
+  api:drawGame($gameId)
+};
+
+declare
 %rest:path("/bjx/games/{$gameId}/{$name}/bet")
 %rest:POST
 %rest:form-param("bet", "{$bet}", 0) 
 %updating
 function api:betPlayer($gameId, $name, $bet) {
   let $game := $api:db/games/game[@id = $gameId]
-  let $player := $game/player[@name=$name]
+  let $player := $game/player[@state='active']
   return (
     player:bet($player, $bet),
     update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
@@ -329,7 +342,7 @@ declare
 %updating
 function api:hitPlayer($gameId, $name as xs:string) {
   let $game := $api:db/games/game[@id = $gameId]
-  let $player := $game/player[@name=$name]
+  let $player := $game/player[@state='active']
   return (
     player:hit($player),
     update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
@@ -342,7 +355,7 @@ declare
 %updating
 function api:standPlayer($gameId, $name as xs:string) {
   let $game := $api:db/games/game[@id = $gameId]
-  let $player := $game/player[@name=$name]
+  let $player := $game/player[@state='active']
   return (
     player:stand($player),
     update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
@@ -371,4 +384,75 @@ function api:newRound($gameId) {
     game:newRound($game),
     update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
   )
+};
+
+declare
+%rest:path("/bjx/test")
+%rest:GET
+%output:method("html")
+function api:test() {
+  let $self := 
+  <game id="1" state="evaluated">
+    <dealer>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+      <deck>
+      </deck>
+    </dealer>
+    <player name="1" state="lost">
+      <balance>100</balance>
+      <bet>20</bet>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+    </player>
+    <player name="2" state="lost">
+      <balance>100</balance>
+      <bet>50</bet>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+    </player>
+    <player name="3" state="won">
+      <balance>100</balance>
+      <bet>70</bet>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+    </player>
+    <player name="4" state="lost">
+      <balance>100</balance>
+      <bet>200</bet>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+    </player>
+    <player name="5" state="won">
+      <balance>100</balance>
+      <bet>500</bet>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+    </player>
+  </game>
+  return 
+  <html>
+    <head>
+        <title>BJX</title>
+        <script src="/static/tictactoe/JS/jquery-3.2.1.min.js"></script>
+        <script src="/static/tictactoe/JS/stomp.js"></script>
+        <script src="/static/tictactoe/JS/ws-element.js"></script>
+        <link rel="stylesheet" type="text/css" href="/static/bjx/css/style.css"/>
+    </head>
+    <body>
+      {game:drawFull($self, "1")}
+    </body>
+  </html>
 };

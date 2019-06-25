@@ -30,23 +30,27 @@ function player:joinGame($gameId as xs:integer, $name as xs:string) {
 declare
 %updating
 function player:leave($self) {
-  delete node $self
+  let $game := $self/..
+  return (
+    delete node $self,
+    if (count($game/player) > 1)
+    then (
+      if ($self/@state = 'active')
+      then (
+        player:next($self)
+      )
+    ) else (
+      (: last player leaves, delete the game :)
+      game:delete($game)
+    )
+  )
 };
 
 declare
 %updating
 function player:bet($self, $bet) {
-  let $game := $self/..
-  let $isLast := not(exists($self/following-sibling::player))
-  return (
-    replace value of node $self/bet with $bet,
-    if ($isLast)
-    then (
-      game:play($game)
-    ) else (
-      player:nextPlayer($self)
-    )
-  )
+  replace value of node $self/bet with $bet,
+  player:next($self)
 };
 
 declare
@@ -59,6 +63,7 @@ function player:hit($self) {
   let $newCard := $resultTuple/card
   let $newDeck := $resultTuple/deck
   let $newHand := hand:addCard($oldHand, $newCard)
+  let $trace := trace(concat("new hand value", $newHand/@value))
   return (
     replace node $oldHand with $newHand,
     replace node $oldDeck with $newDeck
@@ -68,16 +73,7 @@ function player:hit($self) {
 declare
 %updating
 function player:stand($self) {
-  let $game := $self/..
-  let $isLast := not(exists($self/following-sibling::player))
-  return (
-    if ($isLast)
-    then (
-      game:evaluate($game)
-    ) else (
-      player:nextPlayer($self)
-    )
-  )
+  player:next($self)
 };
 
 declare
@@ -92,6 +88,32 @@ function player:nextPlayer($self) {
     if (exists($nextPlayer))
     then (
       replace value of node $nextPlayer/@state with 'active'
+    )
+  )
+};
+
+declare
+%updating
+function player:next($self) {
+  let $game := $self/..
+  let $trace := trace("in player:next() function")
+  let $nextPlayer := $self/following-sibling::player[position() = 1]
+  return (
+    if (exists($nextPlayer))
+    then (
+      replace value of node $self/@state with 'inactive',
+      replace value of node $nextPlayer/@state with 'active'
+    ) else (
+      if ($game/@state = 'betting')
+      then (
+        let $trace := trace("in if condition function")
+        return (
+          game:play($game)
+        )
+      ) else if ($game/@state = 'playing')
+      then (
+        game:evaluate($game)
+      )
     )
   )
 };

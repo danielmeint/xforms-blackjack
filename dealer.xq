@@ -33,3 +33,18 @@ function dealer:play($self) {
     replace node $oldDeck with $newDeck
   )
 };
+
+declare
+%updating
+function dealer:deal($self) {
+  let $game := $self/..
+  for $player at $index in ($game/player, $self)
+  let $oldHand := $player/hand
+  let $deck := $self/deck
+  let $newHand := hand:addCard(hand:addCard($oldHand, $deck/card[$index * 2 - 1]), $deck/card[$index * 2])
+  return (
+    replace node $oldHand with $newHand,
+    delete node $deck/card[$index * 2 - 1],
+    delete node $deck/card[$index * 2]
+  )
+};

@@ -27,7 +27,8 @@ function game:play($self) {
     if ($index = 1)
     then (replace value of node $player/@state with 'active')
     else (replace value of node $player/@state with 'inactive')
-  )
+  ),
+  dealer:deal($self/dealer)
 };
 
 declare
@@ -48,7 +49,7 @@ function game:evaluate($self) {
   )
 };
 
-declare function game:latestId() as xs:integer {
+declare function game:latestId() as xs:double {
   if (exists($api:db/games/game)) 
   then (max($api:db/games/game/@id)) 
   else (0)

@@ -23,9 +23,10 @@ function bjxws:stompdisconnect(){
   let $gameId := ws:get($wsId, "gameId")
   let $name   := ws:get($wsId, "name")
   let $player := $api:db/games/game[@id=$gameId]/player[@name=$name]
+  let $trace  := trace(concat("BJX: WS client disconnected - wsId: ", $wsId, ", gameId: ", $gameId, ", name: ", $name))
   return (
     player:leave($player),
-    update:output(trace(concat("BJX: WS client disconnected - wsId: ", $wsId, ", gameId: ", $gameId, ", name: ", $name)))
+    update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
   )
 };
 
