@@ -323,11 +323,11 @@ function api:redraw($gameId) {
 };
 
 declare
-%rest:path("/bjx/games/{$gameId}/{$name}/bet")
+%rest:path("/bjx/games/{$gameId}/bet")
 %rest:POST
 %rest:form-param("bet", "{$bet}", 0) 
 %updating
-function api:betPlayer($gameId, $name, $bet) {
+function api:betPlayer($gameId, $bet) {
   let $game := $api:db/games/game[@id = $gameId]
   let $player := $game/player[@state='active']
   return (
@@ -337,10 +337,10 @@ function api:betPlayer($gameId, $name, $bet) {
 };
 
 declare
-%rest:path("/bjx/games/{$gameId}/{$name}/hit")
+%rest:path("/bjx/games/{$gameId}/hit")
 %rest:POST
 %updating
-function api:hitPlayer($gameId, $name as xs:string) {
+function api:hitPlayer($gameId) {
   let $game := $api:db/games/game[@id = $gameId]
   let $player := $game/player[@state='active']
   return (
@@ -350,10 +350,10 @@ function api:hitPlayer($gameId, $name as xs:string) {
 };
 
 declare
-%rest:path("/bjx/games/{$gameId}/{$name}/stand") 
+%rest:path("/bjx/games/{$gameId}/stand") 
 %rest:POST
 %updating
-function api:standPlayer($gameId, $name as xs:string) {
+function api:standPlayer($gameId) {
   let $game := $api:db/games/game[@id = $gameId]
   let $player := $game/player[@state='active']
   return (
