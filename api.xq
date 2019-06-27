@@ -387,6 +387,21 @@ function api:newRound($gameId) {
 };
 
 declare
+%rest:path("/bjx/games/{$gameId}/{$name}/chat")
+%rest:POST
+%rest:form-param("msg", "{$msg}")
+%updating
+function api:chat($gameId, $name, $msg) {
+  let $game := $api:db/games/game[@id = $gameId]
+  let $player := $game/player[@name = $name]
+  
+  return (
+    player:chat($player, $msg),
+    update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
+  )
+};
+
+declare
 %rest:path("/bjx/test")
 %rest:GET
 %output:method("html")

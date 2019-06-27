@@ -4,6 +4,8 @@ import module namespace api="xforms/bjx/api" at 'api.xq';
 import module namespace dealer="xforms/bjx/dealer" at 'dealer.xq';
 import module namespace player="xforms/bjx/player" at 'player.xq';
 import module namespace deck="xforms/bjx/deck" at 'deck.xq';
+import module namespace chat="xforms/bjx/chat" at 'chat.xq';
+
 
 
 declare
@@ -64,18 +66,20 @@ function game:newRound($self) {
 
 declare variable $game:defaultId := game:latestId() + 1;
 declare variable $game:defaultState := "betting";
-declare variable $game:defaultDealer := dealer:new();
+declare variable $game:defaultDealer := dealer:newDealer();
 declare variable $game:defaultPlayers := ();
+declare variable $game:defaultChat := chat:newChat();
 
-declare function game:newGame($id, $state, $dealer, $players) {
+declare function game:newGame($id, $state, $dealer, $players, $chat) {
   <game id="{$id}" state="{$state}">
     {$dealer}
     {$players}
+    {$chat}
   </game>
 };
 
 declare function game:newGame() {
-  game:newGame($game:defaultId, $game:defaultState, $game:defaultDealer, $game:defaultPlayers)
+  game:newGame($game:defaultId, $game:defaultState, $game:defaultDealer, $game:defaultPlayers, $game:defaultChat)
 };
 
 declare function game:draw($self, $name) {
@@ -117,33 +121,46 @@ declare function game:reset($self) {
   let $dealer := $game:defaultDealer
   let $players := $self/player ! player:reset(.)
   let $players := (player:setState($players[1], 'active'), subsequence($players, 2, count($players) - 1))
-  return game:newGame($id, $state, $dealer, $players)
+  let $chat := $self/chat
+  return game:newGame($id, $state, $dealer, $players, $chat)
 };
 
 declare function game:setId($self, $id) {
   let $state := $self/@state
   let $dealer := $self/dealer
   let $players := $self/player
-  return game:newGame($id, $state, $dealer, $players)
+  let $chat := $self/chat
+  return game:newGame($id, $state, $dealer, $players, $chat)
 };
 
 declare function game:setState($self, $state) {
   let $id := $self/@id
   let $dealer := $self/dealer
   let $players := $self/player
-  return game:newGame($id, $state, $dealer, $players)
+  let $chat := $self/chat
+  return game:newGame($id, $state, $dealer, $players, $chat)
 };
 
 declare function game:setDealer($self, $dealer) {
   let $id := $self/@id
   let $state := $self/@state
   let $players := $self/player
-  return game:newGame($id, $state, $dealer, $players)
+  let $chat := $self/chat
+  return game:newGame($id, $state, $dealer, $players, $chat)
 };
 
 declare function game:setPlayers($self, $players) {
   let $id := $self/@id
   let $state := $self/@state
   let $dealer := $self/dealer
-  return game:newGame($id, $state, $dealer, $players)
+  let $chat := $self/chat
+  return game:newGame($id, $state, $dealer, $players, $chat)
+};
+
+declare function game:setChat($self, $chat) {
+  let $id := $self/@id
+  let $state := $self/@state
+  let $dealer := $self/dealer
+  let $players := $self/player
+  return game:newGame($id, $state, $dealer, $players, $chat)
 };

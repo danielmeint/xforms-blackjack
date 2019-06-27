@@ -153,6 +153,11 @@ function player:evaluateAgainst($self, $toBeat) {
   )
 };
 
+declare
+%updating
+function player:chat($self, $msg) {
+  insert node <message author="{$self/@name}">{$msg}</message> into $self/../chat
+};
 
 declare variable $player:defaultName := "undefined";
 declare variable $player:defaultState := "inactive";
