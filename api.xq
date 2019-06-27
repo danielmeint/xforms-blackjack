@@ -41,16 +41,6 @@ declare function api:main() {
   let $games := $api:db/games
   let $map := map{ "screen": "menu", "name": session:get('name') }
   return xslt:transform($games, $stylesheet, $map)
-  (: return (
-    <div>
-    Logged in as { session:get('name') }
-    <form action='/bjx/games' method='post'>
-      <input type='submit' value='Create new game'/>
-    </form>
-    <a href="/bjx/games">Load game</a>
-    <a href="/bjx/logout">Logout</a>
-  </div>
-  ) :)
 };
 
 declare function api:login() {
@@ -402,11 +392,90 @@ function api:chat($gameId, $name, $msg) {
 };
 
 declare
-%rest:path("/bjx/test")
+%rest:path("/bjx/test/game")
 %rest:GET
 %output:method("html")
-function api:test() {
+function api:testGame() {
   let $self := 
+  <game id="1" state="playing">
+    <dealer>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+      <deck>
+      </deck>
+    </dealer>
+    <player name="1" state="active">
+      <balance>100</balance>
+      <bet>20</bet>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+    </player>
+    <player name="2" state="active">
+      <balance>100</balance>
+      <bet>50</bet>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+    </player>
+    <player name="3" state="active">
+      <balance>100</balance>
+      <bet>70</bet>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+    </player>
+    <player name="4" state="active">
+      <balance>100</balance>
+      <bet>200</bet>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+    </player>
+    <player name="5" state="active">
+      <balance>100</balance>
+      <bet>500</bet>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+    </player>
+    <chat>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+    </chat>
+  </game>
+  return 
+  <html>
+    <head>
+        <title>BJX</title>
+        <script src="/static/tictactoe/JS/jquery-3.2.1.min.js"></script>
+        <script src="/static/tictactoe/JS/stomp.js"></script>
+        <script src="/static/tictactoe/JS/ws-element.js"></script>
+        <link rel="stylesheet" type="text/css" href="/static/bjx/css/style.css"/>
+    </head>
+    <body>
+      {game:drawFull($self, "1")}
+    </body>
+  </html>
+};
+
+declare
+%rest:path("/bjx/test/lobby")
+%rest:GET
+%output:method("html")
+function api:testLobby() {
+  let $stylesheet := doc("../static/bjx/xslt/lobby.xsl")
+  let $games := <games>
   <game id="1" state="evaluated">
     <dealer>
       <hand value="14">
@@ -457,17 +526,157 @@ function api:test() {
       </hand>
     </player>
   </game>
-  return 
-  <html>
-    <head>
-        <title>BJX</title>
-        <script src="/static/tictactoe/JS/jquery-3.2.1.min.js"></script>
-        <script src="/static/tictactoe/JS/stomp.js"></script>
-        <script src="/static/tictactoe/JS/ws-element.js"></script>
-        <link rel="stylesheet" type="text/css" href="/static/bjx/css/style.css"/>
-    </head>
-    <body>
-      {game:drawFull($self, "1")}
-    </body>
-  </html>
+  <game id="1" state="evaluated">
+    <dealer>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+      <deck>
+      </deck>
+    </dealer>
+    <player name="1" state="lost">
+      <balance>100</balance>
+      <bet>20</bet>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+    </player>
+    <player name="2" state="lost">
+      <balance>100</balance>
+      <bet>50</bet>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+    </player>
+    <player name="3" state="won">
+      <balance>100</balance>
+      <bet>70</bet>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+    </player>
+    <player name="4" state="lost">
+      <balance>100</balance>
+      <bet>200</bet>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+    </player>
+    <player name="5" state="won">
+      <balance>100</balance>
+      <bet>500</bet>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+    </player>
+  </game>
+  <game id="1" state="evaluated">
+    <dealer>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+      <deck>
+      </deck>
+    </dealer>
+    <player name="1" state="lost">
+      <balance>100</balance>
+      <bet>20</bet>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+    </player>
+    <player name="2" state="lost">
+      <balance>100</balance>
+      <bet>50</bet>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+    </player>
+    <player name="3" state="won">
+      <balance>100</balance>
+      <bet>70</bet>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+    </player>
+    <player name="4" state="lost">
+      <balance>100</balance>
+      <bet>200</bet>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+    </player>
+    <player name="5" state="won">
+      <balance>100</balance>
+      <bet>500</bet>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+    </player>
+  </game>
+  <game id="1" state="evaluated">
+    <dealer>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+      <deck>
+      </deck>
+    </dealer>
+    <player name="1" state="lost">
+      <balance>100</balance>
+      <bet>20</bet>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+    </player>
+    <player name="2" state="lost">
+      <balance>100</balance>
+      <bet>50</bet>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+    </player>
+    <player name="3" state="won">
+      <balance>100</balance>
+      <bet>70</bet>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+    </player>
+    <player name="4" state="lost">
+      <balance>100</balance>
+      <bet>200</bet>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+    </player>
+    <player name="5" state="won">
+      <balance>100</balance>
+      <bet>500</bet>
+      <hand value="14">
+        <card value="7" suit="hearts"/>
+        <card value="7" suit="hearts"/>
+      </hand>
+    </player>
+  </game>
+</games>
+  let $map := map{ "screen": "games", "name": "test" }
+  return xslt:transform($games, $stylesheet, $map)
 };
