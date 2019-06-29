@@ -30,13 +30,13 @@ declare
 function api:entry() {
   if (session:get('name'))
   then (
-    api:main() 
+    api:menu() 
   ) else (
     api:login()
   )
 };
 
-declare function api:main() {
+declare function api:menu() {
   let $stylesheet := doc("../static/bjx/xslt/lobby.xsl")
   let $games := $api:db/games
   let $map := map{ "screen": "menu", "name": session:get('name') }
@@ -170,18 +170,27 @@ declare
 %output:method("html")
 %updating
 function api:setup() {
-    db:create("bjx", doc('model.xml')),
-    update:output(web:redirect('/bjx'))
+  db:create("bjx", doc('model.xml')),
+  update:output(web:redirect('/bjx'))
 };
 
 declare
 %rest:path("/bjx/games")
 %rest:GET
 %output:method("html")
-function api:returnGames() {
+function api:accessGames() {
+  if (session:get('name'))
+  then (
+    api:games() 
+  ) else (
+    api:login()
+  )
+};
+
+declare function api:games() {
   let $stylesheet := doc("../static/bjx/xslt/lobby.xsl")
   let $games := $api:db/games
-  let $map := map{ "screen": "games" }
+  let $map := map{ "screen": "games", "name": session:get('name') }
   return xslt:transform($games, $stylesheet, $map)
 };
 
@@ -189,10 +198,20 @@ declare
 %rest:path("/bjx/highscores")
 %rest:GET
 %output:method("html")
-function api:returnHighscores() {
+function api:accessHighscores() {
+  if (session:get('name'))
+  then (
+    api:highscores() 
+  ) else (
+    api:login()
+  )
+};
+
+
+declare function api:highscores() {
   let $stylesheet := doc("../static/bjx/xslt/lobby.xsl")
   let $games := $api:db/games
-  let $map := map{ "screen": "highscores" }
+  let $map := map{ "screen": "highscores", "name": session:get('name') }
   return xslt:transform($games, $stylesheet, $map)
 };
 
