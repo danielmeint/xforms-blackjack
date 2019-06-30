@@ -372,6 +372,19 @@ function api:standPlayer($gameId) {
 };
 
 declare
+%rest:path("/bjx/games/{$gameId}/double")
+%rest:POST
+%updating
+function api:doublePlayer($gameId) {
+  let $game := $api:db/games/game[@id = $gameId]
+  let $player := $game/player[@state='active']
+  return (
+    player:double($player),
+    update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
+  )
+};
+
+declare
 %rest:path("bjx/games/{$gameId}/evaluate")
 %rest:POST
 %updating

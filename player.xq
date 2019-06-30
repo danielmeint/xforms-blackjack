@@ -32,6 +32,7 @@ declare
 function player:leave($self) {
   let $game := $self/..
   return (
+    insert node <message author="INFO">{$self/@name/data()} has left the game.</message> into $game/chat,
     delete node $self,
     if (count($game/player) > 1)
     then (
@@ -78,6 +79,16 @@ function player:stand($self) {
 
 declare
 %updating
+function player:double($self) {
+  let $newBet := $self/bet * 2
+  return (
+    replace value of node $self/bet with $newBet,
+    player:hit($self)
+  )
+};
+
+declare
+%updating
 function player:nextPlayer($self) {
   let $game := $self/..
   let $currPlayer := $self
@@ -96,8 +107,14 @@ declare
 %updating
 function player:next($self) {
   let $game := $self/..
-  let $trace := trace("in player:next() function")
-  let $nextPlayer := $self/following-sibling::player[position() = 1]
+  (: TODO: skip players that just joined (bet 0 and 0 cards) :)
+  let $nextPlayer := 
+  if ($game/@state = 'playing')
+  then (
+    $self/following-sibling::player[bet > 0][position() = 1]
+  ) else (
+    $self/following-sibling::player[position() = 1]
+  )
   return (
     if (exists($nextPlayer))
     then (
@@ -106,10 +123,7 @@ function player:next($self) {
     ) else (
       if ($game/@state = 'betting')
       then (
-        let $trace := trace("in if condition function")
-        return (
-          game:play($game)
-        )
+        game:play($game)
       ) else if ($game/@state = 'playing')
       then (
         game:evaluate($game)
