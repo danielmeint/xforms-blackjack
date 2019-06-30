@@ -38,7 +38,7 @@ declare
 %updating
 function dealer:deal($self) {
   let $game := $self/..
-  (: Everybody gets cards because we cannot tell who betted 0, do not show cards in xslt if bet = 0 :)
+  (: Disallow people to bet 0 :)
   for $player at $index in ($game/player, $self)
   let $oldHand := $player/hand
   let $deck := $self/deck

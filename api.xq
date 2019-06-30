@@ -484,6 +484,46 @@ function api:testGame() {
       <message author="test">Hello</message>
       <message author="test">Hello</message>
       <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
+      <message author="test">Hello</message>
     </chat>
   </game>
   return 
