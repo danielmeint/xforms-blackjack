@@ -57,3 +57,17 @@ declare function hand:getOptimalSum($values as xs:integer*) {
     return hand:getOptimalSum($newValues)
   )
 };
+
+declare function hand:evaluate($self, $toBeat) as xs:string {
+  if ($self/@value <= 21 and ($self/@value > $toBeat or $toBeat > 21))
+  then (
+    'won'
+  )
+  else if ($self/@value <= 21 and $self/@value = $toBeat)
+  then (
+    'tied'
+  )
+  else (
+    'lost'
+  )
+};

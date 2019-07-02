@@ -385,18 +385,6 @@ function api:doublePlayer($gameId) {
 };
 
 declare
-%rest:path("bjx/games/{$gameId}/evaluate")
-%rest:POST
-%updating
-function api:evaluateGame($gameId) {
-  let $game := $api:db/games/game[@id = $gameId]
-  return (
-    game:evaluate($game),
-    update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
-  )
-};
-
-declare
 %rest:path("/bjx/games/{$gameId}/newRound")
 %rest:POST
 %updating

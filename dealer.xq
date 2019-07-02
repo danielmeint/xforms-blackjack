@@ -21,7 +21,7 @@ declare function dealer:newDealer() {
 
 declare
 %updating
-function dealer:play($self) {
+function dealer:draw($self) {
   let $game := $self/..
   let $oldHand := $self/hand
   let $oldDeck := $self/deck
@@ -38,14 +38,23 @@ declare
 %updating
 function dealer:deal($self) {
   let $game := $self/..
-  (: Disallow people to bet 0 :)
-  for $player at $index in ($game/player, $self)
-  let $oldHand := $player/hand
-  let $deck := $self/deck
-  let $newHand := hand:addCard(hand:addCard($oldHand, $deck/card[$index * 2 - 1]), $deck/card[$index * 2])
+  
+  (: give self ALL cards necessary (previously drawn after players have played) :)
+  let $result := deck:drawTo17($self/hand, $self/deck)
+  let $offset := count($result/hand/card)
+  
   return (
-    replace node $oldHand with $newHand,
-    delete node $deck/card[$index * 2 - 1],
-    delete node $deck/card[$index * 2]
+    replace node $self/hand with $result/hand,
+    for $card at $index in $result/hand/card
+    return (
+      delete node $self/deck/card[$index]
+    ),
+    for $player at $index in $game/player
+    let $newHand := hand:addCard(hand:addCard($player/hand, $self/deck/card[$offset + ($index * 2) - 1]), $self/deck/card[$offset + ($index * 2)])
+    return (
+      replace node $player/hand with $newHand,
+      delete node $self/deck/card[$offset + ($index * 2) - 1],
+      delete node $self/deck/card[$offset + ($index * 2)]
+    )
   )
 };

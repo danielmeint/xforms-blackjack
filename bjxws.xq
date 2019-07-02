@@ -7,14 +7,12 @@ import module namespace ws = "http://basex.org/modules/ws";
 import module namespace api="xforms/bjx/api" at "api.xq";
 import module namespace player="xforms/bjx/player" at 'player.xq';
 
-(: WS STOMP connect, increase client count by 1 :)
 declare
 %ws-stomp:connect("/bjx")
 function bjxws:stompconnect(){
     trace(concat("BJX: WS client connected with id ", ws:id()))
 };
 
-(: WS STOMP disconnect, decrease client count by 1 :)
 declare
 %ws:close("/bjx")
 %updating

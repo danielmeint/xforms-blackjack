@@ -36,17 +36,25 @@ function game:play($self) {
 declare
 %updating
 function game:evaluate($self) {
-  let $dealer := $self/dealer
-  let $resTuple := deck:drawTo17($dealer/hand, $dealer/deck)
-  let $newDealerHand := $resTuple/hand
-  let $newDeck := $resTuple/deck
+  for $player in $self/player[count(hand/card) >= 2]
   return (
-    for $player in $self/player
+    (: BUG: last player might have doubled, so we do not have his last card in the DB yet :)
+    player:evaluate($player)
+  ),
+  replace value of node $self/@state with 'evaluated'
+};
+
+declare
+%updating
+function game:evaluateAfterHit($self) {
+  let $regularPlayers := $self/player[count(hand/card) >= 2][position() != last()]
+  let $lastPlayer := $self/player[count(hand/card) >= 2][position() = last()]
+  return (
+    for $p in $regularPlayers
     return (
-      player:evaluateAgainst($player, $newDealerHand/@value)
+      player:evaluate($p)
     ),
-    replace node $dealer/hand with $newDealerHand,
-    replace node $dealer/deck with $newDeck,
+    player:evaluateAfterHit($lastPlayer),
     replace value of node $self/@state with 'evaluated'
   )
 };

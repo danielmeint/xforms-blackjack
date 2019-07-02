@@ -58,13 +58,32 @@ declare
 %updating
 function player:hit($self) {
   let $game := $self/..
+  let $newHand := hand:addCard($self/hand, $game/dealer/deck/card[1])
+  return (
+    player:draw($self),
+    if ($newHand/@value >= 21)
+    then (
+      if (player:isLast($self))
+      then (
+        game:evaluateAfterHit($game)
+      )
+      else (
+        player:stand($self)
+      )
+    )
+  )
+};
+
+declare
+%updating
+function player:draw($self) {
+  let $game := $self/..
   let $oldHand := $self/hand
   let $oldDeck := $game/dealer/deck
   let $resultTuple := deck:drawCard($oldDeck)
   let $newCard := $resultTuple/card
   let $newDeck := $resultTuple/deck
   let $newHand := hand:addCard($oldHand, $newCard)
-  let $trace := trace(concat("new hand value", $newHand/@value))
   return (
     replace node $oldHand with $newHand,
     replace node $oldDeck with $newDeck
@@ -83,24 +102,32 @@ function player:double($self) {
   let $newBet := $self/bet * 2
   return (
     replace value of node $self/bet with $newBet,
-    player:hit($self)
+    player:draw($self),
+    (: might trigger evaluate, but the drawn card is not recorded in the database yet .... :)
+    if (player:isLast($self))
+    then (
+      game:evaluateAfterHit($self/..)
+    ) else (
+      player:stand($self)
+    )
   )
 };
 
-declare
-%updating
-function player:nextPlayer($self) {
+declare function player:nextPlayer($self) {
   let $game := $self/..
-  let $currPlayer := $self
-  let $nextPlayer := $self/following-sibling::player[position() = 1]
-  
   return (
-    replace value of node $currPlayer/@state with 'inactive',
-    if (exists($nextPlayer))
+    if ($game/@state = 'playing')
     then (
-      replace value of node $nextPlayer/@state with 'active'
+      (: TODO test for count(hand/card) >= 2 :)
+      $self/following-sibling::player[count(hand/card) >= 2 and bet > 0][position() = 1]
+    ) else (
+      $self/following-sibling::player[position() = 1]
     )
   )
+};
+
+declare function player:isLast($self) as xs:boolean {
+  not(exists(player:nextPlayer($self)))
 };
 
 declare
@@ -108,13 +135,7 @@ declare
 function player:next($self) {
   let $game := $self/..
   (: TODO: skip players that just joined (bet 0 and 0 cards) :)
-  let $nextPlayer := 
-  if ($game/@state = 'playing')
-  then (
-    $self/following-sibling::player[bet > 0][position() = 1]
-  ) else (
-    $self/following-sibling::player[position() = 1]
-  )
+  let $nextPlayer := player:nextPlayer($self)
   return (
     if (exists($nextPlayer))
     then (
@@ -134,24 +155,39 @@ function player:next($self) {
 
 declare
 %updating
-function player:doubleDown($self) {
-  let $bet := $self/bet
+function player:evaluate($self) {
+  player:evaluate($self, $self/../dealer/hand/@value)
+};
+
+declare
+%updating
+function player:evaluateAfterHit($self) {
+  let $game := $self/..
+  let $deck := $game/dealer/deck
+  let $hand := $self/hand
+  let $handAfterHit := hand:addCard($hand, $deck/card[1])
+  let $toBeat := $game/dealer/hand/@value
+  let $result := hand:evaluate($handAfterHit, $toBeat)
+
   return (
-    replace value of node $bet with $bet/text() * 2,
-    player:hit($self),
-    player:stand($self)
+    if ($result = 'won')
+    then (
+      replace value of node $self/@state with "won",
+      replace value of node $self/balance with $self/balance/text() + $self/bet/text()
+    )
+    else if ($result = 'tied')
+    then (
+      replace value of node $self/@state with "tied"
+    ) else (
+      replace value of node $self/@state with "lost",
+      replace value of node $self/balance with $self/balance/text() - $self/bet/text()
+    )
   )
 };
 
 declare
 %updating
-function player:evaluate($self) {
-  player:evaluateAgainst($self, $self/../dealer/hand/@value)
-};
-
-declare
-%updating
-function player:evaluateAgainst($self, $toBeat) {
+function player:evaluate($self, $toBeat) {
   if ($self/hand/@value <= 21 and ($self/hand/@value > $toBeat or $toBeat > 21))
   then (
     replace value of node $self/@state with "won",
