@@ -14,7 +14,10 @@ import module namespace dealer="xforms/bjx/dealer" at 'dealer.xq';
 import module namespace deck="xforms/bjx/deck" at 'deck.xq';
 import module namespace game="xforms/bjx/game" at 'game.xq';
 import module namespace hand="xforms/bjx/hand" at 'hand.xq';
+import module namespace html="xforms/bjx/html" at 'html.xq';
 import module namespace player="xforms/bjx/player" at 'player.xq';
+
+
 
 import module namespace ws = "http://basex.org/modules/ws";
 import module namespace request = "http://exquery.org/ns/request";
@@ -44,28 +47,7 @@ declare function api:menu() {
 };
 
 declare function api:login() {
-    <div class='warning'>Please enter your credentials:</div>,
-    <form action='/bjx/login' method='post'>
-      <table>
-        <tr>
-          <td><b>Name:</b></td>
-          <td>
-            <input size='30' name='name' id='user' autofocus=''/>
-          </td>
-        </tr>
-        <tr>
-          <td><b>Password:</b></td>
-          <td>{
-            <input size='30' type='password' name='pass'/>,
-            <button type='submit'>Login</button>
-          }</td>
-        </tr>
-        <tr>
-          <td>Or</td>
-          <td><a href='/bjx/signup'>Sign Up Here!</a></td>
-        </tr>
-      </table>
-    </form>
+  html:login()
 };
 
 declare
@@ -74,28 +56,7 @@ declare
 %output:method("html")
 %rest:query-param("error", "{$error}")
 function api:sign-up($error) {
-  <form action='/bjx/signup' method='post'>
-    <p>{$error}</p>
-    <table>
-      <tr>
-        <td><b>Name:</b></td>
-        <td>
-          <input size='30' name='name' id='user' autofocus=''/>
-        </td>
-      </tr>
-      <tr>
-        <td><b>Password:</b></td>
-        <td>{
-          <input size='30' type='password' name='pass'/>,
-          <button type='submit'>Create Account</button>
-        }</td>
-      </tr>
-      <tr>
-        <td>Or</td>
-        <td><a href='/bjx'>Log In Here!</a></td>
-      </tr>
-    </table>
-  </form>
+    html:signup($error)
 };
 
 declare
@@ -221,13 +182,12 @@ declare
 %updating
 function api:createGame() {
   game:updateCreate(),
-  (: TODO: skip this step; but: game needs to be created in DB before we can join (?) :)
-  update:output(web:redirect(concat("/bjx/games/", game:latestId() + 1, "/join")))
+  update:output(web:redirect(concat("/bjx/games/", game:latestId() + 1)))
 };
 
 declare
-%rest:path("/bjx/games/{$gameId}")
-%rest:DELETE
+%rest:path("/bjx/games/{$gameId}/delete")
+%rest:POST
 %updating
 function api:deleteGame($gameId as xs:integer) {
     let $game := $api:db/games/game[@id = $gameId]
@@ -238,32 +198,6 @@ function api:deleteGame($gameId as xs:integer) {
 };
 
 declare
-%rest:path("/bjx/games/{$gameId}/delete")
-%rest:POST
-%updating
-function api:deleteGamePOST($gameId as xs:integer) {
-    let $game := $api:db/games/game[@id = $gameId]
-    return (
-      game:delete($game),
-      update:output(web:redirect("/bjx"))
-    )
-};
-
-declare
-%rest:path("/bjx/games/{$gameId}/join")
-%rest:GET
-%output:method("html")
-function api:joinGameForm($gameId) {
-  <html>
-    <body>
-      <form action='/bjx/games/{$gameId}/join' method='POST'>
-        <input type='submit' />
-      </form>
-    </body>
-  </html>
-};
-
-declare
 %rest:path("/bjx/games/{$gameId}/join")
 %rest:POST
 %updating
@@ -271,15 +205,47 @@ function api:joinGame($gameId as xs:integer) {
   let $name := session:get('name')
   return (
     player:joinGame($gameId, $name),
-    update:output(web:redirect(concat("/bjx/games/", $gameId)))
+    update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
   )
+};
+
+declare
+%rest:path("/bjx/games/{$gameId}/leave")
+%rest:POST
+%updating
+function api:leaveGame($gameId as xs:integer) {
+  let $game := $api:db/games/game[@id = $gameId]
+  let $name := session:get('name')
+  let $player := $game/player[@name = $name]
+  return (
+    player:leave($player),
+    update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
+  ) 
 };
 
 declare
 %rest:path("/bjx/games/{$gameId}")
 %rest:GET
 %output:method("html")
-function api:returnGame($gameId) {
+function api:accessGame($gameId) {
+  if (session:get('name'))
+  then (
+    api:getGame($gameId)
+  ) else (
+    api:login()
+  )
+};
+
+declare function api:getGame($gameId) {
+  if (exists($api:db/games/game[@id = $gameId]))
+  then (
+    api:returnGame($gameId)
+  ) else (
+    api:gameNotFound()
+  )
+};
+
+declare function api:returnGame($gameId) {
   let $name := session:get('name')
   let $hostname := request:hostname()
   let $port := request:port()
@@ -301,6 +267,10 @@ function api:returnGame($gameId) {
           </body>
       </html>
   return $html
+};
+
+declare function api:gameNotFound() {
+  html:gameNotFound()
 };
 
 declare
@@ -397,16 +367,17 @@ function api:newRound($gameId) {
 };
 
 declare
-%rest:path("/bjx/games/{$gameId}/{$name}/chat")
+%rest:path("/bjx/games/{$gameId}/chat")
 %rest:POST
 %rest:form-param("msg", "{$msg}")
 %updating
-function api:chat($gameId, $name, $msg) {
+function api:chat($gameId, $msg) {
   let $game := $api:db/games/game[@id = $gameId]
-  let $player := $game/player[@name = $name]
+  let $name := session:get('name')
+  let $chat := $game/chat
   
   return (
-    player:chat($player, $msg),
+    insert node <message author="{$name}">{$msg}</message> into $chat,
     update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
   )
 };

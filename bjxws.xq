@@ -1,11 +1,13 @@
 xquery version "3.0";
 
-module namespace bjxws = "TicTacToe/WS";
+module namespace bjxws = "xforms/bjx/bjxws";
 
 import module namespace ws = "http://basex.org/modules/ws";
 
 import module namespace api="xforms/bjx/api" at "api.xq";
 import module namespace player="xforms/bjx/player" at 'player.xq';
+import module namespace game="xforms/bjx/game" at 'game.xq';
+
 
 declare
 %ws-stomp:connect("/bjx")
@@ -19,12 +21,25 @@ declare
 function bjxws:stompdisconnect(){
   let $wsId   := ws:id()
   let $gameId := ws:get($wsId, "gameId")
+  let $game   := $api:db/games/game[@id=$gameId]
   let $name   := ws:get($wsId, "name")
-  let $player := $api:db/games/game[@id=$gameId]/player[@name=$name]
-  let $trace  := trace(concat("BJX: WS client disconnected - wsId: ", $wsId, ", gameId: ", $gameId, ", name: ", $name))
+  let $player := $game/player[@name=$name]
+  let $trace  := trace(concat("BJX: WS client disconnected - wsId: ", $wsId, ", gameId: ", $gameId, ", name: ", $name, ", was playing? ", exists($player)))
+  let $allConnected := (
+    for $wsId in ws:ids()
+    where ws:get($wsId, "app") = "bjx" and ws:get($wsId, "gameId") = $gameId
+    return $wsId
+  )
   return (
-    player:leave($player),
-    update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
+    if (exists($player))
+    then (
+      player:leave($player)
+    ),
+    if (count($allConnected) <= 1)
+    then (
+      (: no more spectators (should imply no more players) --> delete the game :)
+      game:delete($game)
+    )
   )
 };
 

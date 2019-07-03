@@ -34,15 +34,12 @@ function player:leave($self) {
   return (
     insert node <message author="INFO">{$self/@name/data()} has left the game.</message> into $game/chat,
     delete node $self,
-    if (count($game/player) > 1)
+    if (count($game/player) >= 2)
     then (
       if ($self/@state = 'active')
       then (
         player:next($self)
       )
-    ) else (
-      (: last player leaves, delete the game :)
-      game:delete($game)
     )
   )
 };
@@ -201,12 +198,6 @@ function player:evaluate($self, $toBeat) {
     replace value of node $self/@state with "lost",
     replace value of node $self/balance with $self/balance/text() - $self/bet/text()
   )
-};
-
-declare
-%updating
-function player:chat($self, $msg) {
-  insert node <message author="{$self/@name}">{$msg}</message> into $self/../chat
 };
 
 declare variable $player:defaultName := "undefined";
