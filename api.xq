@@ -257,9 +257,9 @@ declare function api:returnGame($gameId) {
       <html>
           <head>
               <title>BJX</title>
-              <script src="/static/tictactoe/JS/jquery-3.2.1.min.js"></script>
-              <script src="/static/tictactoe/JS/stomp.js"></script>
-              <script src="/static/tictactoe/JS/ws-element.js"></script>
+              <script src="/static/bjx/js/jquery-3.2.1.min.js"></script>
+              <script src="/static/bjx/js/stomp.js"></script>
+              <script src="/static/bjx/js/ws-element.js"></script>
               <link rel="stylesheet" type="text/css" href="/static/bjx/css/style.css"/>
           </head>
           <body>
@@ -374,6 +374,7 @@ declare
 function api:chat($gameId, $msg) {
   let $game := $api:db/games/game[@id = $gameId]
   let $name := session:get('name')
+  let $trace := trace("new message in chat")
   let $chat := $game/chat
   
   return (
@@ -489,9 +490,9 @@ function api:testGame() {
   <html>
     <head>
         <title>BJX</title>
-        <script src="/static/tictactoe/JS/jquery-3.2.1.min.js"></script>
-        <script src="/static/tictactoe/JS/stomp.js"></script>
-        <script src="/static/tictactoe/JS/ws-element.js"></script>
+        <script src="/static/bjx/JS/jquery-3.2.1.min.js"></script>
+        <script src="/static/bjx/JS/stomp.js"></script>
+        <script src="/static/bjx/JS/ws-element.js"></script>
         <link rel="stylesheet" type="text/css" href="/static/bjx/css/style.css"/>
     </head>
     <body>
