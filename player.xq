@@ -65,7 +65,7 @@ function player:hit($self) {
         game:evaluateAfterHit($game)
       )
       else (
-        player:stand($self)
+        player:next($self)
       )
     )
   )
@@ -105,7 +105,7 @@ function player:double($self) {
     then (
       game:evaluateAfterHit($self/..)
     ) else (
-      player:stand($self)
+      player:next($self)
     )
   )
 };

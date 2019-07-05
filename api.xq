@@ -193,7 +193,7 @@ function api:deleteGame($gameId as xs:integer) {
     let $game := $api:db/games/game[@id = $gameId]
     return (
       game:delete($game),
-      update:output(web:redirect("/bjx"))
+      update:output(web:redirect("/bjx/games"))
     )
 };
 
