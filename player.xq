@@ -2,6 +2,7 @@ module namespace player="xforms/bjx/player";
 
 import module namespace api="xforms/bjx/api" at 'api.xq';
 import module namespace card="xforms/bjx/card" at 'card.xq';
+import module namespace chat="xforms/bjx/chat" at 'chat.xq';
 import module namespace dealer="xforms/bjx/dealer" at 'dealer.xq';
 import module namespace deck="xforms/bjx/deck" at 'deck.xq';
 import module namespace game="xforms/bjx/game" at 'game.xq';
@@ -13,13 +14,17 @@ declare
 function player:joinGame($gameId as xs:integer, $name as xs:string) {
   let $game := $api:db/games/game[@id=$gameId]
   let $newPlayer := player:setName(player:newPlayer(), $name)
+  let $trace := trace(concat($name, " joined game ", $gameId))
+  let $msg := <message author="INFO">{$name} joined the game.</message>
+  let $chat := $game/chat
   return (
     if (exists($game/player))
     then (
+      insert node $msg into $chat,
       insert node $newPlayer into $game
     ) else (
       (: first player to join :)
-      let $newGame := game:reset(game:setPlayers($game, ($newPlayer)))
+      let $newGame := game:setChat(game:reset(game:setPlayers($game, ($newPlayer))), chat:addMessage($chat, $msg))
       return (
         replace node $game with $newGame
       )
