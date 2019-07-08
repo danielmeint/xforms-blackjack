@@ -16,6 +16,8 @@ import module namespace game="xforms/bjx/game" at 'game.xq';
 import module namespace hand="xforms/bjx/hand" at 'hand.xq';
 import module namespace html="xforms/bjx/html" at 'html.xq';
 import module namespace player="xforms/bjx/player" at 'player.xq';
+import module namespace usr="xforms/bjx/usr" at 'usr.xq';
+
 
 
 
@@ -24,7 +26,8 @@ import module namespace request = "http://exquery.org/ns/request";
 
 import module namespace session = 'http://basex.org/modules/session';
 
-declare variable $api:db := db:open("bjx");
+declare variable $api:games := db:open('xforms-games')/games;
+declare variable $api:users := db:open('xforms-users')/users;
 
 declare
 %rest:path("/bjx")
@@ -33,21 +36,10 @@ declare
 function api:entry() {
   if (session:get('name'))
   then (
-    api:menu() 
+    html:menu() 
   ) else (
-    api:login()
+    html:login()
   )
-};
-
-declare function api:menu() {
-  let $stylesheet := doc("../static/bjx/xslt/lobby.xsl")
-  let $games := $api:db/games
-  let $map := map{ "screen": "menu", "name": session:get('name') }
-  return xslt:transform($games, $stylesheet, $map)
-};
-
-declare function api:login() {
-  html:login()
 };
 
 declare
@@ -73,7 +65,8 @@ function api:user-create(
     if(user:exists($name)) then (
       error((), 'User already exists.')
     ) else (
-      user:create($name, $pass, 'none')
+      user:create($name, $pass, 'none'),
+      usr:create($name)
     ),
     update:output(web:redirect("/bjx"))
   } catch * {
@@ -131,7 +124,8 @@ declare
 %output:method("html")
 %updating
 function api:setup() {
-  db:create("bjx", doc('model.xml')),
+  db:create('xforms-games', doc('../static/bjx/xml/games.xml')),
+  db:create('xforms-users', doc('../static/bjx/xml/users.xml')),
   update:output(web:redirect('/bjx'))
 };
 
@@ -142,17 +136,10 @@ declare
 function api:accessGames() {
   if (session:get('name'))
   then (
-    api:games() 
+    html:games()
   ) else (
-    api:login()
+    html:login()
   )
-};
-
-declare function api:games() {
-  let $stylesheet := doc("../static/bjx/xslt/lobby.xsl")
-  let $games := $api:db/games
-  let $map := map{ "screen": "games", "name": session:get('name') }
-  return xslt:transform($games, $stylesheet, $map)
 };
 
 declare
@@ -162,18 +149,10 @@ declare
 function api:accessHighscores() {
   if (session:get('name'))
   then (
-    api:highscores() 
+    html:highscores() 
   ) else (
-    api:login()
+    html:login()
   )
-};
-
-
-declare function api:highscores() {
-  let $stylesheet := doc("../static/bjx/xslt/lobby.xsl")
-  let $games := $api:db/games
-  let $map := map{ "screen": "highscores", "name": session:get('name') }
-  return xslt:transform($games, $stylesheet, $map)
 };
 
 declare
@@ -190,7 +169,7 @@ declare
 %rest:POST
 %updating
 function api:deleteGame($gameId as xs:integer) {
-    let $game := $api:db/games/game[@id = $gameId]
+    let $game := $api:games/game[@id = $gameId]
     return (
       game:delete($game),
       update:output(web:redirect("/bjx/games"))
@@ -214,7 +193,7 @@ declare
 %rest:POST
 %updating
 function api:leaveGame($gameId as xs:integer) {
-  let $game := $api:db/games/game[@id = $gameId]
+  let $game := $api:games/game[@id = $gameId]
   let $name := session:get('name')
   let $player := $game/player[@name = $name]
   return (
@@ -232,12 +211,12 @@ function api:accessGame($gameId) {
   then (
     api:getGame($gameId)
   ) else (
-    api:login()
+    html:login()
   )
 };
 
 declare function api:getGame($gameId) {
-  if (exists($api:db/games/game[@id = $gameId]))
+  if (exists($api:games/game[@id = $gameId]))
   then (
     api:returnGame($gameId)
   ) else (
@@ -277,18 +256,17 @@ declare
 %rest:path("/bjx/games/{$gameId}/draw")
 %rest:GET
 function api:drawGame($gameId) {
-  let $game := $api:db/games/game[@id = $gameId]
+  let $game := $api:games/game[@id = $gameId]
   let $wsIds := ws:ids()
   return (
     for $wsId in $wsIds
     where ws:get($wsId, "app") = "bjx" and ws:get($wsId, "gameId") = $gameId
-    (: might need another check for gameId:)
     let $path := ws:get($wsId, "path")
     let $name := ws:get($wsId, "name")
     let $destinationPath := concat("/bjx/", $path, "/", $gameId, "/", $name)
-    let $data := game:drawFull($game, $name)
+    let $data := game:draw($game, $name)
+    let $trace := trace(concat("BJX: drawing game to destination path: ", $destinationPath))
     return (
-      trace(concat("BJX: drawing game to destination path: ", $destinationPath)),
       ws:sendchannel(fn:serialize($data), $destinationPath)
     )
   )
@@ -307,7 +285,7 @@ declare
 %rest:form-param("bet", "{$bet}", 0) 
 %updating
 function api:betPlayer($gameId, $bet) {
-  let $game := $api:db/games/game[@id = $gameId]
+  let $game := $api:games/game[@id = $gameId]
   let $player := $game/player[@state='active']
   return (
     player:bet($player, $bet),
@@ -320,7 +298,7 @@ declare
 %rest:POST
 %updating
 function api:hitPlayer($gameId) {
-  let $game := $api:db/games/game[@id = $gameId]
+  let $game := $api:games/game[@id = $gameId]
   let $player := $game/player[@state='active']
   return (
     player:hit($player),
@@ -333,7 +311,7 @@ declare
 %rest:POST
 %updating
 function api:standPlayer($gameId) {
-  let $game := $api:db/games/game[@id = $gameId]
+  let $game := $api:games/game[@id = $gameId]
   let $player := $game/player[@state='active']
   return (
     player:stand($player),
@@ -346,7 +324,7 @@ declare
 %rest:POST
 %updating
 function api:doublePlayer($gameId) {
-  let $game := $api:db/games/game[@id = $gameId]
+  let $game := $api:games/game[@id = $gameId]
   let $player := $game/player[@state='active']
   return (
     player:double($player),
@@ -359,7 +337,7 @@ declare
 %rest:POST
 %updating
 function api:newRound($gameId) {
-  let $game := $api:db/games/game[@id = $gameId]
+  let $game := $api:games/game[@id = $gameId]
   return (
     game:newRound($game),
     update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
@@ -372,7 +350,7 @@ declare
 %rest:form-param("msg", "{$msg}")
 %updating
 function api:chat($gameId, $msg) {
-  let $game := $api:db/games/game[@id = $gameId]
+  let $game := $api:games/game[@id = $gameId]
   let $name := session:get('name')
   let $trace := trace("new message in chat")
   let $chat := $game/chat
@@ -399,7 +377,7 @@ function api:testGame() {
       </deck>
     </dealer>
     <player name="1" state="active">
-      <balance>100</balance>
+      
       <bet>20</bet>
       <hand value="14">
         <card value="7" suit="hearts"/>
@@ -407,7 +385,7 @@ function api:testGame() {
       </hand>
     </player>
     <player name="2" state="active">
-      <balance>100</balance>
+      
       <bet>50</bet>
       <hand value="14">
         <card value="7" suit="hearts"/>
@@ -415,7 +393,7 @@ function api:testGame() {
       </hand>
     </player>
     <player name="3" state="active">
-      <balance>100</balance>
+      
       <bet>70</bet>
       <hand value="14">
         <card value="7" suit="hearts"/>
@@ -423,7 +401,7 @@ function api:testGame() {
       </hand>
     </player>
     <player name="4" state="active">
-      <balance>100</balance>
+      
       <bet>200</bet>
       <hand value="14">
         <card value="7" suit="hearts"/>
@@ -431,7 +409,7 @@ function api:testGame() {
       </hand>
     </player>
     <player name="5" state="active">
-      <balance>100</balance>
+      
       <bet>500</bet>
       <hand value="14">
         <card value="7" suit="hearts"/>
@@ -453,6 +431,7 @@ function api:testGame() {
       <message author="test">Hello</message>
       <message author="test">Hello</message>
       <message author="test">Hello</message>
+      <message author="test">long message long message long message long message long message long message long message long message long message </message>
       <message author="test">Hello</message>
       <message author="test">Hello</message>
       <message author="test">Hello</message>
@@ -482,8 +461,7 @@ function api:testGame() {
       <message author="test">Hello</message>
       <message author="test">Hello</message>
       <message author="test">Hello</message>
-      <message author="test">Hello</message>
-      <message author="test">Hello</message>
+      <message author="test">last message</message>
     </chat>
   </game>
   return 
@@ -496,7 +474,7 @@ function api:testGame() {
         <link rel="stylesheet" type="text/css" href="/static/bjx/css/style.css"/>
     </head>
     <body>
-      {game:drawFull($self, "1")}
+      {game:draw($self, "daniel3")}
     </body>
   </html>
 };
@@ -518,7 +496,7 @@ function api:testLobby() {
       </deck>
     </dealer>
     <player name="1" state="lost">
-      <balance>100</balance>
+      
       <bet>20</bet>
       <hand value="14">
         <card value="7" suit="hearts"/>
@@ -526,7 +504,7 @@ function api:testLobby() {
       </hand>
     </player>
     <player name="2" state="lost">
-      <balance>100</balance>
+      
       <bet>50</bet>
       <hand value="14">
         <card value="7" suit="hearts"/>
@@ -534,7 +512,7 @@ function api:testLobby() {
       </hand>
     </player>
     <player name="3" state="won">
-      <balance>100</balance>
+      
       <bet>70</bet>
       <hand value="14">
         <card value="7" suit="hearts"/>
@@ -542,7 +520,7 @@ function api:testLobby() {
       </hand>
     </player>
     <player name="4" state="lost">
-      <balance>100</balance>
+      
       <bet>200</bet>
       <hand value="14">
         <card value="7" suit="hearts"/>
@@ -550,7 +528,7 @@ function api:testLobby() {
       </hand>
     </player>
     <player name="5" state="won">
-      <balance>100</balance>
+      
       <bet>500</bet>
       <hand value="14">
         <card value="7" suit="hearts"/>
@@ -568,7 +546,7 @@ function api:testLobby() {
       </deck>
     </dealer>
     <player name="1" state="lost">
-      <balance>100</balance>
+      
       <bet>20</bet>
       <hand value="14">
         <card value="7" suit="hearts"/>
@@ -576,7 +554,7 @@ function api:testLobby() {
       </hand>
     </player>
     <player name="2" state="lost">
-      <balance>100</balance>
+      
       <bet>50</bet>
       <hand value="14">
         <card value="7" suit="hearts"/>
@@ -584,7 +562,7 @@ function api:testLobby() {
       </hand>
     </player>
     <player name="3" state="won">
-      <balance>100</balance>
+      
       <bet>70</bet>
       <hand value="14">
         <card value="7" suit="hearts"/>
@@ -592,7 +570,7 @@ function api:testLobby() {
       </hand>
     </player>
     <player name="4" state="lost">
-      <balance>100</balance>
+      
       <bet>200</bet>
       <hand value="14">
         <card value="7" suit="hearts"/>
@@ -600,7 +578,7 @@ function api:testLobby() {
       </hand>
     </player>
     <player name="5" state="won">
-      <balance>100</balance>
+      
       <bet>500</bet>
       <hand value="14">
         <card value="7" suit="hearts"/>
@@ -618,7 +596,7 @@ function api:testLobby() {
       </deck>
     </dealer>
     <player name="1" state="lost">
-      <balance>100</balance>
+      
       <bet>20</bet>
       <hand value="14">
         <card value="7" suit="hearts"/>
@@ -626,7 +604,7 @@ function api:testLobby() {
       </hand>
     </player>
     <player name="2" state="lost">
-      <balance>100</balance>
+      
       <bet>50</bet>
       <hand value="14">
         <card value="7" suit="hearts"/>
@@ -634,7 +612,7 @@ function api:testLobby() {
       </hand>
     </player>
     <player name="3" state="won">
-      <balance>100</balance>
+      
       <bet>70</bet>
       <hand value="14">
         <card value="7" suit="hearts"/>
@@ -642,7 +620,7 @@ function api:testLobby() {
       </hand>
     </player>
     <player name="4" state="lost">
-      <balance>100</balance>
+      
       <bet>200</bet>
       <hand value="14">
         <card value="7" suit="hearts"/>
@@ -650,7 +628,7 @@ function api:testLobby() {
       </hand>
     </player>
     <player name="5" state="won">
-      <balance>100</balance>
+      
       <bet>500</bet>
       <hand value="14">
         <card value="7" suit="hearts"/>
@@ -668,7 +646,7 @@ function api:testLobby() {
       </deck>
     </dealer>
     <player name="1" state="lost">
-      <balance>100</balance>
+      
       <bet>20</bet>
       <hand value="14">
         <card value="7" suit="hearts"/>
@@ -676,7 +654,7 @@ function api:testLobby() {
       </hand>
     </player>
     <player name="2" state="lost">
-      <balance>100</balance>
+      
       <bet>50</bet>
       <hand value="14">
         <card value="7" suit="hearts"/>
@@ -684,7 +662,7 @@ function api:testLobby() {
       </hand>
     </player>
     <player name="3" state="won">
-      <balance>100</balance>
+      
       <bet>70</bet>
       <hand value="14">
         <card value="7" suit="hearts"/>
@@ -692,7 +670,7 @@ function api:testLobby() {
       </hand>
     </player>
     <player name="4" state="lost">
-      <balance>100</balance>
+      
       <bet>200</bet>
       <hand value="14">
         <card value="7" suit="hearts"/>
@@ -700,7 +678,7 @@ function api:testLobby() {
       </hand>
     </player>
     <player name="5" state="won">
-      <balance>100</balance>
+      
       <bet>500</bet>
       <hand value="14">
         <card value="7" suit="hearts"/>

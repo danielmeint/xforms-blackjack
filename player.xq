@@ -7,12 +7,17 @@ import module namespace dealer="xforms/bjx/dealer" at 'dealer.xq';
 import module namespace deck="xforms/bjx/deck" at 'deck.xq';
 import module namespace game="xforms/bjx/game" at 'game.xq';
 import module namespace hand="xforms/bjx/hand" at 'hand.xq';
+import module namespace usr="xforms/bjx/usr" at 'usr.xq';
+
 
 
 declare
 %updating
 function player:joinGame($gameId as xs:integer, $name as xs:string) {
-  let $game := $api:db/games/game[@id=$gameId]
+  let $game := $api:games/game[@id=$gameId]
+  let $user := $api:users/user[@name=$name]
+  let $balance := $user/balance/text()
+  let $trace := trace($balance)
   let $newPlayer := player:setName(player:newPlayer(), $name)
   let $trace := trace(concat($name, " joined game ", $gameId))
   let $msg := <message author="INFO">{$name} joined the game.</message>
@@ -47,6 +52,10 @@ function player:leave($self) {
       )
     )
   )
+};
+
+declare function player:getUser($self) {
+  $api:users/user[@name=$self/@name]
 };
 
 declare
@@ -174,15 +183,13 @@ function player:evaluateAfterHit($self) {
   return (
     if ($result = 'won')
     then (
-      replace value of node $self/@state with "won",
-      replace value of node $self/balance with $self/balance/text() + $self/bet/text()
+      player:win($self)
     )
     else if ($result = 'tied')
     then (
-      replace value of node $self/@state with "tied"
+      player:tie($self)
     ) else (
-      replace value of node $self/@state with "lost",
-      replace value of node $self/balance with $self/balance/text() - $self/bet/text()
+      player:lose($self)
     )
   )
 };
@@ -190,85 +197,103 @@ function player:evaluateAfterHit($self) {
 declare
 %updating
 function player:evaluate($self, $toBeat) {
-  if ($self/hand/@value <= 21 and ($self/hand/@value > $toBeat or $toBeat > 21))
-  then (
+  let $result := hand:evaluate($self/hand, $toBeat)
+  
+  return (
+    if ($result = 'won')
+    then (
+      player:win($self)
+    )
+    else if ($result = 'tied')
+    then (
+      player:tie($self)
+    ) else (
+      player:lose($self)
+    )
+  )
+};
+
+declare
+%updating
+function player:win($self) {
+  let $user := player:getUser($self)
+  let $balance := $user/balance
+  let $bet  := $self/bet/text()
+  
+  return (
     replace value of node $self/@state with "won",
-    replace value of node $self/balance with $self/balance/text() + $self/bet/text()
+    usr:win($user, $bet)
+
   )
-  else if ($self/hand/@value <= 21 and $self/hand/@value = $toBeat)
-  then (
-    replace value of node $self/@state with "tied"
-  )
-  else (
+};
+
+declare
+%updating
+function player:tie($self) {
+  replace value of node $self/@state with "tied"
+};
+
+declare
+%updating
+function player:lose($self) {
+  let $user := player:getUser($self)
+  let $balance := $user/balance
+  let $bet  := $self/bet/text()
+  
+  return (
     replace value of node $self/@state with "lost",
-    replace value of node $self/balance with $self/balance/text() - $self/bet/text()
+    usr:lose($user, $bet)
   )
 };
 
 declare variable $player:defaultName := "undefined";
 declare variable $player:defaultState := "inactive";
-declare variable $player:defaultBalance := 100;
 declare variable $player:defaultBet := 0;
 declare variable $player:defaultHand := hand:newHand();
 
-declare function player:newPlayer($name, $state, $balance, $bet, $hand) {
+declare function player:newPlayer($name, $state, $bet, $hand) {
   <player name="{$name}" state="{$state}">
-    <balance>{$balance}</balance>
     <bet>{$bet}</bet>
     {$hand}
   </player>
 };
 
 declare function player:newPlayer() {
-  player:newPlayer($player:defaultName, $player:defaultState, $player:defaultBalance, $player:defaultBet, $player:defaultHand)
+  player:newPlayer($player:defaultName, $player:defaultState, $player:defaultBet, $player:defaultHand)
 };
 
 declare function player:reset($self) {
   let $name := $self/@name
   let $state := $player:defaultState
-  let $balance := $self/balance/text()
   let $bet := $player:defaultBet
   let $hand := $player:defaultHand
-  return player:newPlayer($name, $state, $balance, $bet, $hand)
+  return player:newPlayer($name, $state, $bet, $hand)
 };
 
 declare function player:setName($self, $name) {
   let $state := $self/@state
-  let $balance := $self/balance/text()
   let $bet := $self/bet/text()
   let $hand := $self/hand
-  return player:newPlayer($name, $state, $balance, $bet, $hand)
+  return player:newPlayer($name, $state, $bet, $hand)
 };
 
 declare function player:setState($self, $state) {
   let $name := $self/@name
-  let $balance := $self/balance/text()
   let $bet := $self/bet/text()
   let $hand := $self/hand
-  return player:newPlayer($name, $state, $balance, $bet, $hand)
-};
-
-
-declare function player:setBalance($self, $balance) {
-  let $name := $self/@name
-  let $state := $self/@state
-  let $bet := $self/bet/text()
-  let $hand := $self/hand
-  return player:newPlayer($name, $state, $balance, $bet, $hand)
+  return player:newPlayer($name, $state, $bet, $hand)
 };
 
 declare function player:setBet($self, $bet) {
   let $name := $self/@name
   let $state := $self/@state
-  let $balance := $self/balance/text()
   let $hand := $self/hand
-  return player:newPlayer($name, $state, $balance, $bet, $hand)
+  return player:newPlayer($name, $state, $bet, $hand)
 };
 
 declare function player:setHand($self, $hand) {
   let $name := $self/@name
   let $state := $self/@state
-  let $balance := $self/balance/text()
   let $bet := $self/bet/text()
-  return player:newPlayer($name, $state, $balance, $bet, $hand)
+  return player:newPlayer($name, $state, $bet, $hand)
 };

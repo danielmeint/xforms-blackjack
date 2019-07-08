@@ -1,5 +1,9 @@
 module namespace html = "xforms/bjx/html";
 
+import module namespace api="xforms/bjx/api" at 'api.xq';
+
+import module namespace session = 'http://basex.org/modules/session';
+
 declare function html:wrap($content) {
   <html>
     <head>
@@ -14,6 +18,36 @@ declare function html:wrap($content) {
     </div>
     </body>
   </html>
+};
+
+declare function html:menu() {
+  let $name := session:get('name')
+  let $user := $api:users/user[@name=$name]
+  return (
+    html:wrap(
+      <div>
+        <div id="login" class="right top">
+          <span><b>{$name}</b> (${$user/balance/text()})</span>
+          <a class="btn btn-secondary" href="/bjx/logout">
+            <svg>
+              <use href="/static/bjx/svg/solid.svg#sign-out-alt"/>
+            </svg>
+          </a>
+        </div>
+        <h1>XForms Multi-Client Blackjack</h1>
+        <form class="form-menu" action="/bjx/games" method="post">
+            <input class="btn btn-menu" type="submit" value="New Game" />
+        </form>
+        <form class="form-menu">
+            <a class="btn btn-menu" href="/bjx/games">Join Game</a>
+        </form>
+        <form class="form-menu">
+            <a class="btn btn-menu btn-secondary" href="/bjx/highscores">Highscores</a>
+        </form>
+      </div>
+    )
+  )
+
 };
 
 declare function html:login() {
@@ -67,6 +101,22 @@ declare function html:signup($error) {
   </form>
 
   )
+};
+
+declare function html:games() {
+  let $stylesheet := doc("../static/bjx/xslt/lobby.xsl")
+  let $data := $api:games
+  let $map := map{ "screen": "games", "name": session:get('name') }
+  let $content := xslt:transform($data, $stylesheet, $map)
+  return html:wrap($content)
+};
+
+declare function html:highscores() {
+  let $stylesheet := doc("../static/bjx/xslt/lobby.xsl")
+  let $data := $api:users
+  let $map := map{ "screen": "highscores", "name": session:get('name') }
+  let $content := xslt:transform($data, $stylesheet, $map)
+  return html:wrap($content)
 };
 
 declare function html:gameNotFound() {

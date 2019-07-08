@@ -21,7 +21,7 @@ declare
 function bjxws:stompdisconnect(){
   let $wsId   := ws:id()
   let $gameId := ws:get($wsId, "gameId")
-  let $game   := $api:db/games/game[@id=$gameId]
+  let $game   := $api:games/game[@id=$gameId]
   let $name   := ws:get($wsId, "name")
   let $player := $game/player[@name=$name]
   let $trace  := trace(concat("BJX: WS client disconnected - wsId: ", $wsId, ", gameId: ", $gameId, ", name: ", $name, ", was playing? ", exists($player)))
