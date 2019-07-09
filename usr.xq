@@ -40,3 +40,9 @@ declare
 function usr:lose($self, $amount) {
   replace value of node $self/balance with $self/balance/text() - $amount
 };
+
+declare
+%updating
+function usr:deposit($self, $amount) {
+  usr:win($self, $amount)
+};

@@ -12,9 +12,7 @@ declare function html:wrap($content) {
     <body>
     
     <div class="flex-container flex-center">
-      <div class="content">
-        {$content}
-      </div>
+      {$content}
     </div>
     </body>
   </html>
@@ -25,9 +23,9 @@ declare function html:menu() {
   let $user := $api:users/user[@name=$name]
   return (
     html:wrap(
-      <div>
+      <div class="content">
         <div id="login" class="right top">
-          <span><b>{$name}</b> (${$user/balance/text()})</span>
+          <span><b><a href="/bjx/profile">{$name}</a></b> (${$user/balance/text()})</span>
           <a class="btn btn-secondary" href="/bjx/logout">
             <svg>
               <use href="/static/bjx/svg/solid.svg#sign-out-alt"/>
@@ -52,79 +50,102 @@ declare function html:menu() {
 
 declare function html:login() {
   html:wrap(
-  <form action='/bjx/login' method='post'>
-    <p>Please enter your credentials</p>
-    <table>
-      <tr>
-        <td><b>Name:</b></td>
-        <td>
-          <input size='30' type="text" name='name' id='user' autofocus=''/>
-        </td>
-      </tr>
-      <tr>
-        <td><b>Password:</b></td>
-        <td>
-          <input size='30' type='password' name='pass'/>
-        </td>
-      </tr>
-      <tr>
-        <td><a class="btn btn-secondary" href='/bjx/signup'>Sign Up</a></td>
-        <td><button class="btn" type='submit'>Login</button></td>
-      </tr>
-    </table>
-  </form>
+  <div class="content">
+    <form action='/bjx/login' method='post'>
+      <p>Please enter your credentials</p>
+      <table>
+        <tr>
+          <td><b>Name:</b></td>
+          <td>
+            <input size='30' type="text" name='name' id='user' autofocus=''/>
+          </td>
+        </tr>
+        <tr>
+          <td><b>Password:</b></td>
+          <td>
+            <input size='30' type='password' name='pass'/>
+          </td>
+        </tr>
+        <tr>
+          <td><a class="btn btn-secondary" href='/bjx/signup'>Sign Up</a></td>
+          <td><button class="btn" type='submit'>Login</button></td>
+        </tr>
+      </table>
+    </form>
+  </div>
   )
 };
 
 declare function html:signup($error) {
   html:wrap(
-  <form action='/bjx/signup' method='post'>
-    <p class="error">{$error}</p>
-    <table>
-      <tr>
-        <td><b>Name:</b></td>
-        <td>
-          <input size='30' type="text" name='name' id='user' autofocus=''/>
-        </td>
-      </tr>
-      <tr>
-        <td><b>Password:</b></td>
-        <td>
-          <input size='30' type='password' name='pass'/>
-        </td>
-      </tr>
-      <tr>
-        <td><a class="btn btn-secondary" href='/bjx'>Log In</a></td>
-        <td><button class="btn" type='submit'>Create Account</button></td>
-      </tr>
-    </table>
-  </form>
-
+  <div class="content">
+    <form action='/bjx/signup' method='post'>
+      <p class="error">{$error}</p>
+      <table>
+        <tr>
+          <td><b>Name:</b></td>
+          <td>
+            <input size='30' type="text" name='name' id='user' autofocus=''/>
+          </td>
+        </tr>
+        <tr>
+          <td><b>Password:</b></td>
+          <td>
+            <input size='30' type='password' name='pass'/>
+          </td>
+        </tr>
+        <tr>
+          <td><a class="btn btn-secondary" href='/bjx'>Log In</a></td>
+          <td><button class="btn" type='submit'>Create Account</button></td>
+        </tr>
+      </table>
+    </form>
+  </div>
   )
 };
 
 declare function html:games() {
+  let $name := session:get('name')
+  let $user := $api:users/user[@name=$name]
+  
   let $stylesheet := doc("../static/bjx/xslt/lobby.xsl")
   let $data := $api:games
-  let $map := map{ "screen": "games", "name": session:get('name') }
+  let $map := map{ "screen": "games", "name": $name, "balance": $user/balance }
   let $content := xslt:transform($data, $stylesheet, $map)
   return html:wrap($content)
 };
 
 declare function html:highscores() {
+  let $name := session:get('name')
+  let $user := $api:users/user[@name=$name]
+  
   let $stylesheet := doc("../static/bjx/xslt/lobby.xsl")
   let $data := $api:users
-  let $map := map{ "screen": "highscores", "name": session:get('name') }
+  let $map := map{ "screen": "highscores", "name": $name, "balance": $user/balance }
+  let $content := xslt:transform($data, $stylesheet, $map)
+  return html:wrap($content)
+};
+
+declare function html:profile() {
+  let $name := session:get('name')
+  let $user := $api:users/user[@name=$name]
+  
+  let $stylesheet := doc("../static/bjx/xslt/lobby.xsl")
+  let $data := $user
+  let $map := map{ "screen": "profile", "name": $name, "balance": $user/balance }
   let $content := xslt:transform($data, $stylesheet, $map)
   return html:wrap($content)
 };
 
 declare function html:gameNotFound() {
   html:wrap(
-    <form action="/bjx/games" method="post">
-      <a class="btn btn-secondary left top" href="/bjx">◀ Menu</a>
-      <p>Game not found.</p>
-      <input class="btn" type="submit" value="Create new Game" />
-    </form>
+    <div class="content">
+      <form action="/bjx/games" method="post">
+        <a class="btn btn-secondary left top" href="/bjx">◀ Menu</a>
+        <p>Game not found.</p>
+        <input class="btn" type="submit" value="Create new Game" />
+      </form>
+    </div>
+
   )
 };

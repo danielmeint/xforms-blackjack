@@ -130,6 +130,29 @@ function api:setup() {
 };
 
 declare
+%rest:path("/bjx/profile")
+%rest:GET
+%output:method("html")
+function api:profile() {
+  html:profile()
+};
+
+declare
+%rest:path("/bjx/deposit")
+%rest:POST
+%rest:form-param("amount", "{$amount}", 0) 
+%output:method("html")
+%updating
+function api:deposit($amount) {
+  let $name := session:get('name')
+  let $user := $api:users/user[@name=$name]
+  return (
+    usr:deposit($user, $amount),
+    update:output(web:redirect("/bjx/profile"))
+  )
+};
+
+declare
 %rest:path("/bjx/games")
 %rest:GET
 %output:method("html")
