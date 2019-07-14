@@ -38,12 +38,12 @@ declare
 function game:evaluate($self) {
   for $player in $self/player[count(hand/card) >= 2]
   return (
-    (: BUG: last player might have doubled, so we do not have his last card in the DB yet :)
     player:evaluate($player)
   ),
   replace value of node $self/@state with 'evaluated'
 };
 
+(: bug: if last player doubles, we do not 2x his bet before evaluating :)
 declare
 %updating
 function game:evaluateAfterHit($self) {
@@ -102,7 +102,15 @@ declare function game:reset($self) {
   let $state := $game:defaultState
   let $dealer := $game:defaultDealer
   let $players := $self/player ! player:reset(.)
-  let $players := (player:setState($players[1], 'active'), subsequence($players, 2, count($players) - 1))
+  let $players := (
+    for $player in $players
+    let $user := $api:users/user[@name=$player/@name]
+    where $user/balance > 0
+    return $player
+  )
+  let $trace := trace($players)
+  let $players := if (count($players) > 0) then (player:setState($players[1], 'active'), subsequence($players, 2, count($players) - 1)) else ($players)
+  let $trace := trace($players)
   let $chat := $self/chat
   return game:newGame($id, $state, $dealer, $players, $chat)
 };
