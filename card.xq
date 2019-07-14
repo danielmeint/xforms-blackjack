@@ -1,4 +1,4 @@
-module namespace card='xforms/bjx/card';
+module namespace card='xforms-blackjack/card';
 
 declare function card:newCard($value, $suit) {
   <card value="{$value}" suit="{$suit}"/>

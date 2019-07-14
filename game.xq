@@ -1,10 +1,10 @@
-module namespace game='xforms/bjx/game';
+module namespace game='xforms-blackjack/game';
 
-import module namespace api="xforms/bjx/api" at 'api.xq';
-import module namespace dealer="xforms/bjx/dealer" at 'dealer.xq';
-import module namespace player="xforms/bjx/player" at 'player.xq';
-import module namespace deck="xforms/bjx/deck" at 'deck.xq';
-import module namespace chat="xforms/bjx/chat" at 'chat.xq';
+import module namespace api="xforms-blackjack/api" at 'api.xq';
+import module namespace dealer="xforms-blackjack/dealer" at 'dealer.xq';
+import module namespace player="xforms-blackjack/player" at 'player.xq';
+import module namespace deck="xforms-blackjack/deck" at 'deck.xq';
+import module namespace chat="xforms-blackjack/chat" at 'chat.xq';
 
 
 
@@ -91,7 +91,7 @@ declare function game:newGame() {
 };
 
 declare function game:draw($self, $name) {
-  let $xsl := doc('../static/bjx/xslt/game.xsl')
+  let $xsl := doc('../static/xforms-static/xslt/game.xsl')
   let $user := $api:users/user[@name=$name]
   let $map := map{ "name" : $name, "balance" : $user/balance/text() }
   return xslt:transform($self, $xsl, $map)
@@ -108,9 +108,7 @@ declare function game:reset($self) {
     where $user/balance > 0
     return $player
   )
-  let $trace := trace($players)
   let $players := if (count($players) > 0) then (player:setState($players[1], 'active'), subsequence($players, 2, count($players) - 1)) else ($players)
-  let $trace := trace($players)
   let $chat := $self/chat
   return game:newGame($id, $state, $dealer, $players, $chat)
 };

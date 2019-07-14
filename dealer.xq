@@ -1,9 +1,9 @@
-module namespace dealer='xforms/bjx/dealer';
+module namespace dealer='xforms-blackjack/dealer';
 
-import module namespace api="xforms/bjx/api" at 'api.xq';
-import module namespace deck="xforms/bjx/deck" at 'deck.xq';
+import module namespace api="xforms-blackjack/api" at 'api.xq';
+import module namespace deck="xforms-blackjack/deck" at 'deck.xq';
 
-import module namespace hand="xforms/bjx/hand" at 'hand.xq';
+import module namespace hand="xforms-blackjack/hand" at 'hand.xq';
 
 declare variable $dealer:defaultHand := hand:newHand();
 declare variable $dealer:defaultDeck := deck:shuffle(deck:newDeck());

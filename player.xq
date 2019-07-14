@@ -1,13 +1,13 @@
-module namespace player="xforms/bjx/player";
+module namespace player="xforms-blackjack/player";
 
-import module namespace api="xforms/bjx/api" at 'api.xq';
-import module namespace card="xforms/bjx/card" at 'card.xq';
-import module namespace chat="xforms/bjx/chat" at 'chat.xq';
-import module namespace dealer="xforms/bjx/dealer" at 'dealer.xq';
-import module namespace deck="xforms/bjx/deck" at 'deck.xq';
-import module namespace game="xforms/bjx/game" at 'game.xq';
-import module namespace hand="xforms/bjx/hand" at 'hand.xq';
-import module namespace usr="xforms/bjx/usr" at 'usr.xq';
+import module namespace api="xforms-blackjack/api" at 'api.xq';
+import module namespace card="xforms-blackjack/card" at 'card.xq';
+import module namespace chat="xforms-blackjack/chat" at 'chat.xq';
+import module namespace dealer="xforms-blackjack/dealer" at 'dealer.xq';
+import module namespace deck="xforms-blackjack/deck" at 'deck.xq';
+import module namespace game="xforms-blackjack/game" at 'game.xq';
+import module namespace hand="xforms-blackjack/hand" at 'hand.xq';
+import module namespace usr="xforms-blackjack/usr" at 'usr.xq';
 
 
 

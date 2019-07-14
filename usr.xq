@@ -1,6 +1,6 @@
-module namespace usr = "xforms/bjx/usr";
+module namespace usr = "xforms-blackjack/usr";
 
-import module namespace api="xforms/bjx/api" at 'api.xq';
+import module namespace api="xforms-blackjack/api" at 'api.xq';
 
 declare variable $usr:defaultBalance := 100;
 declare variable $usr:defaultHighscore := $usr:defaultBalance;

@@ -1,6 +1,6 @@
-module namespace hand='xforms/bjx/hand';
+module namespace hand='xforms-blackjack/hand';
 
-import module namespace card="xforms/bjx/card" at 'card.xq';
+import module namespace card="xforms-blackjack/card" at 'card.xq';
 
 
 declare function hand:newHand() {

@@ -1,25 +1,13 @@
-module namespace api = "xforms/bjx/api";
+module namespace api = "xforms-blackjack/api";
 
-(: import module namespace api="xforms/bjx/api" at 'api.xq';
-import module namespace card="xforms/bjx/card" at 'card.xq';
-import module namespace dealer="xforms/bjx/dealer" at 'dealer.xq';
-import module namespace deck="xforms/bjx/deck" at 'deck.xq';
-import module namespace game="xforms/bjx/game" at 'game.xq';
-import module namespace hand="xforms/bjx/hand" at 'hand.xq';
-import module namespace helper="xforms/bjx/helper" at 'helper.xq';
-import module namespace player="xforms/bjx/player" at 'player.xq'; :)
-
-import module namespace card="xforms/bjx/card" at 'card.xq';
-import module namespace dealer="xforms/bjx/dealer" at 'dealer.xq';
-import module namespace deck="xforms/bjx/deck" at 'deck.xq';
-import module namespace game="xforms/bjx/game" at 'game.xq';
-import module namespace hand="xforms/bjx/hand" at 'hand.xq';
-import module namespace html="xforms/bjx/html" at 'html.xq';
-import module namespace player="xforms/bjx/player" at 'player.xq';
-import module namespace usr="xforms/bjx/usr" at 'usr.xq';
-
-
-
+import module namespace card="xforms-blackjack/card" at 'card.xq';
+import module namespace dealer="xforms-blackjack/dealer" at 'dealer.xq';
+import module namespace deck="xforms-blackjack/deck" at 'deck.xq';
+import module namespace game="xforms-blackjack/game" at 'game.xq';
+import module namespace hand="xforms-blackjack/hand" at 'hand.xq';
+import module namespace html="xforms-blackjack/html" at 'html.xq';
+import module namespace player="xforms-blackjack/player" at 'player.xq';
+import module namespace usr="xforms-blackjack/usr" at 'usr.xq';
 
 import module namespace ws = "http://basex.org/modules/ws";
 import module namespace request = "http://exquery.org/ns/request";
@@ -30,7 +18,7 @@ declare variable $api:games := db:open('xforms-games')/games;
 declare variable $api:users := db:open('xforms-users')/users;
 
 declare
-%rest:path("/bjx")
+%rest:path("/xforms-blackjack")
 %rest:GET
 %output:method("html")
 function api:entry() {
@@ -44,7 +32,7 @@ function api:entry() {
 
 declare
 %rest:GET
-%rest:path('bjx/signup')
+%rest:path('xforms-blackjack/signup')
 %output:method("html")
 %rest:query-param("error", "{$error}")
 function api:sign-up($error) {
@@ -53,7 +41,7 @@ function api:sign-up($error) {
 
 declare
 %rest:POST
-%rest:path("/bjx/signup")
+%rest:path("/xforms-blackjack/signup")
 %rest:query-param("name", "{$name}")
 %rest:query-param("pass", "{$pass}")
 %updating
@@ -68,15 +56,15 @@ function api:user-create(
       user:create($name, $pass, 'none'),
       usr:create($name)
     ),
-    update:output(web:redirect("/bjx"))
+    update:output(web:redirect("/xforms-blackjack"))
   } catch * {
-    update:output(web:redirect("/bjx/signup", map { 'error': $err:description }))
+    update:output(web:redirect("/xforms-blackjack/signup", map { 'error': $err:description }))
   }
 };
 
 declare
 %rest:POST
-%rest:path('/bjx/signup-check')
+%rest:path('/xforms-blackjack/signup-check')
 %rest:query-param('name', '{$name}')
 %rest:query-param('pass', '{$pass}')
 function api:signup-check(
@@ -88,7 +76,7 @@ function api:signup-check(
 
 declare
 %rest:POST
-%rest:path('/bjx/login')
+%rest:path('/xforms-blackjack/login')
 %rest:query-param('name', '{$name}')
 %rest:query-param('pass', '{$pass}')
 function api:login-check(
@@ -101,15 +89,15 @@ function api:login-check(
   } catch user:* {
     (: login fails: no session info is set :)
   },
-  web:redirect('/bjx')
+  web:redirect('/xforms-blackjack')
 };
 
 declare
-%rest:path('/bjx/logout')
+%rest:path('/xforms-blackjack/logout')
 function api:logout() as element(rest:response) {
   session:get('name') ! api:close(.),
   session:delete('name'),
-  web:redirect('/bjx')
+  web:redirect('/xforms-blackjack')
 };
 
 declare function api:close($name  as  xs:string) as empty-sequence() {
@@ -119,18 +107,18 @@ declare function api:close($name  as  xs:string) as empty-sequence() {
 };
 
 declare
-%rest:path("/bjx/setup")
+%rest:path("/xforms-blackjack/setup")
 %rest:GET
 %output:method("html")
 %updating
 function api:setup() {
-  db:create('xforms-games', doc('../static/bjx/xml/games.xml')),
-  db:create('xforms-users', doc('../static/bjx/xml/users.xml')),
-  update:output(web:redirect('/bjx'))
+  db:create('xforms-games', doc('../static/xforms-static/xml/games.xml')),
+  db:create('xforms-users', doc('../static/xforms-static/xml/users.xml')),
+  update:output(web:redirect('/xforms-blackjack'))
 };
 
 declare
-%rest:path("/bjx/profile")
+%rest:path("/xforms-blackjack/profile")
 %rest:GET
 %output:method("html")
 function api:profile() {
@@ -138,7 +126,7 @@ function api:profile() {
 };
 
 declare
-%rest:path("/bjx/deposit")
+%rest:path("/xforms-blackjack/deposit")
 %rest:POST
 %rest:form-param("amount", "{$amount}", 0) 
 %output:method("html")
@@ -148,12 +136,12 @@ function api:deposit($amount) {
   let $user := $api:users/user[@name=$name]
   return (
     usr:deposit($user, $amount),
-    update:output(web:redirect("/bjx/profile"))
+    update:output(web:redirect("/xforms-blackjack/profile"))
   )
 };
 
 declare
-%rest:path("/bjx/games")
+%rest:path("/xforms-blackjack/games")
 %rest:GET
 %output:method("html")
 function api:accessGames() {
@@ -166,7 +154,7 @@ function api:accessGames() {
 };
 
 declare
-%rest:path("/bjx/highscores")
+%rest:path("/xforms-blackjack/highscores")
 %rest:GET
 %output:method("html")
 function api:accessHighscores() {
@@ -179,40 +167,40 @@ function api:accessHighscores() {
 };
 
 declare
-%rest:path("/bjx/games")
+%rest:path("/xforms-blackjack/games")
 %rest:POST
 %updating
 function api:createGame() {
   game:updateCreate(),
-  update:output(web:redirect(concat("/bjx/games/", game:latestId() + 1)))
+  update:output(web:redirect(concat("/xforms-blackjack/games/", game:latestId() + 1)))
 };
 
 declare
-%rest:path("/bjx/games/{$gameId}/delete")
+%rest:path("/xforms-blackjack/games/{$gameId}/delete")
 %rest:POST
 %updating
 function api:deleteGame($gameId as xs:integer) {
     let $game := $api:games/game[@id = $gameId]
     return (
       game:delete($game),
-      update:output(web:redirect("/bjx/games"))
+      update:output(web:redirect("/xforms-blackjack/games"))
     )
 };
 
 declare
-%rest:path("/bjx/games/{$gameId}/join")
+%rest:path("/xforms-blackjack/games/{$gameId}/join")
 %rest:POST
 %updating
 function api:joinGame($gameId as xs:integer) {
   let $name := session:get('name')
   return (
     player:joinGame($gameId, $name),
-    update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
+    update:output(web:redirect(concat("/xforms-blackjack/games/", $gameId, "/draw")))
   )
 };
 
 declare
-%rest:path("/bjx/games/{$gameId}/leave")
+%rest:path("/xforms-blackjack/games/{$gameId}/leave")
 %rest:POST
 %updating
 function api:leaveGame($gameId as xs:integer) {
@@ -221,12 +209,12 @@ function api:leaveGame($gameId as xs:integer) {
   let $player := $game/player[@name = $name]
   return (
     player:leave($player),
-    update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
+    update:output(web:redirect(concat("/xforms-blackjack/games/", $gameId, "/draw")))
   ) 
 };
 
 declare
-%rest:path("/bjx/games/{$gameId}")
+%rest:path("/xforms-blackjack/games/{$gameId}")
 %rest:GET
 %output:method("html")
 function api:accessGame($gameId) {
@@ -252,20 +240,20 @@ declare function api:returnGame($gameId) {
   let $hostname := request:hostname()
   let $port := request:port()
   let $address := concat($hostname,":",$port)
-  let $websocketURL := concat("ws://", $address, "/ws/bjx")
-  let $getURL := concat("http://", $address, "/bjx/games/", $gameId, "/draw")
-  let $subscription := concat("/bjx/games/", $gameId, "/", $name)
+  let $websocketURL := concat("ws://", $address, "/ws/xforms-blackjack")
+  let $getURL := concat("http://", $address, "/xforms-blackjack/games/", $gameId, "/draw")
+  let $subscription := concat("/xforms-blackjack/games/", $gameId, "/", $name)
   let $html :=
       <html>
           <head>
-              <title>BJX</title>
-              <script src="/static/bjx/js/jquery-3.2.1.min.js"></script>
-              <script src="/static/bjx/js/stomp.js"></script>
-              <script src="/static/bjx/js/ws-element.js"></script>
-              <link rel="stylesheet" type="text/css" href="/static/bjx/css/style.css"/>
+              <title>xforms-blackjack</title>
+              <script src="/static/xforms-static/js/jquery-3.2.1.min.js"></script>
+              <script src="/static/xforms-static/js/stomp.js"></script>
+              <script src="/static/xforms-static/js/ws-element.js"></script>
+              <link rel="stylesheet" type="text/css" href="/static/xforms-static/css/style.css"/>
           </head>
           <body>
-              <ws-stream id="bjx" url="{$websocketURL}" subscription="{$subscription}" geturl="{$getURL}"/>
+              <ws-stream id="xforms-blackjack" url="{$websocketURL}" subscription="{$subscription}" geturl="{$getURL}"/>
           </body>
       </html>
   return $html
@@ -276,19 +264,19 @@ declare function api:gameNotFound() {
 };
 
 declare
-%rest:path("/bjx/games/{$gameId}/draw")
+%rest:path("/xforms-blackjack/games/{$gameId}/draw")
 %rest:GET
 function api:drawGame($gameId) {
   let $game := $api:games/game[@id = $gameId]
   let $wsIds := ws:ids()
   return (
     for $wsId in $wsIds
-    where ws:get($wsId, "app") = "bjx" and ws:get($wsId, "gameId") = $gameId
+    where ws:get($wsId, "app") = "xforms-blackjack" and ws:get($wsId, "gameId") = $gameId
     let $path := ws:get($wsId, "path")
     let $name := ws:get($wsId, "name")
-    let $destinationPath := concat("/bjx/", $path, "/", $gameId, "/", $name)
+    let $destinationPath := concat("/xforms-blackjack/", $path, "/", $gameId, "/", $name)
     let $data := game:draw($game, $name)
-    let $trace := trace(concat("BJX: drawing game to destination path: ", $destinationPath))
+    let $trace := trace(concat("xforms-blackjack: drawing game to destination path: ", $destinationPath))
     return (
       ws:sendchannel(fn:serialize($data), $destinationPath)
     )
@@ -296,14 +284,14 @@ function api:drawGame($gameId) {
 };
 
 declare
-%rest:path("/bjx/games/{$gameId}/draw")
+%rest:path("/xforms-blackjack/games/{$gameId}/draw")
 %rest:POST
 function api:redraw($gameId) {
   api:drawGame($gameId)
 };
 
 declare
-%rest:path("/bjx/games/{$gameId}/bet")
+%rest:path("/xforms-blackjack/games/{$gameId}/bet")
 %rest:POST
 %rest:form-param("bet", "{$bet}", 0) 
 %updating
@@ -312,12 +300,12 @@ function api:betPlayer($gameId, $bet) {
   let $player := $game/player[@state='active']
   return (
     player:bet($player, $bet),
-    update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
+    update:output(web:redirect(concat("/xforms-blackjack/games/", $gameId, "/draw")))
   )
 };
 
 declare
-%rest:path("/bjx/games/{$gameId}/hit")
+%rest:path("/xforms-blackjack/games/{$gameId}/hit")
 %rest:POST
 %updating
 function api:hitPlayer($gameId) {
@@ -325,12 +313,12 @@ function api:hitPlayer($gameId) {
   let $player := $game/player[@state='active']
   return (
     player:hit($player),
-    update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
+    update:output(web:redirect(concat("/xforms-blackjack/games/", $gameId, "/draw")))
   )
 };
 
 declare
-%rest:path("/bjx/games/{$gameId}/stand") 
+%rest:path("/xforms-blackjack/games/{$gameId}/stand") 
 %rest:POST
 %updating
 function api:standPlayer($gameId) {
@@ -338,12 +326,12 @@ function api:standPlayer($gameId) {
   let $player := $game/player[@state='active']
   return (
     player:stand($player),
-    update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
+    update:output(web:redirect(concat("/xforms-blackjack/games/", $gameId, "/draw")))
   )
 };
 
 declare
-%rest:path("/bjx/games/{$gameId}/double")
+%rest:path("/xforms-blackjack/games/{$gameId}/double")
 %rest:POST
 %updating
 function api:doublePlayer($gameId) {
@@ -351,24 +339,24 @@ function api:doublePlayer($gameId) {
   let $player := $game/player[@state='active']
   return (
     player:double($player),
-    update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
+    update:output(web:redirect(concat("/xforms-blackjack/games/", $gameId, "/draw")))
   )
 };
 
 declare
-%rest:path("/bjx/games/{$gameId}/newRound")
+%rest:path("/xforms-blackjack/games/{$gameId}/newRound")
 %rest:POST
 %updating
 function api:newRound($gameId) {
   let $game := $api:games/game[@id = $gameId]
   return (
     game:newRound($game),
-    update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
+    update:output(web:redirect(concat("/xforms-blackjack/games/", $gameId, "/draw")))
   )
 };
 
 declare
-%rest:path("/bjx/games/{$gameId}/chat")
+%rest:path("/xforms-blackjack/games/{$gameId}/chat")
 %rest:POST
 %rest:form-param("msg", "{$msg}")
 %updating
@@ -380,12 +368,12 @@ function api:chat($gameId, $msg) {
   
   return (
     insert node <message author="{$name}">{$msg}</message> into $chat,
-    update:output(web:redirect(concat("/bjx/games/", $gameId, "/draw")))
+    update:output(web:redirect(concat("/xforms-blackjack/games/", $gameId, "/draw")))
   )
 };
 
 declare
-%rest:path("/bjx/test/game")
+%rest:path("/xforms-blackjack/test/game")
 %rest:GET
 %output:method("html")
 function api:testGame() {
@@ -490,11 +478,11 @@ function api:testGame() {
   return 
   <html>
     <head>
-        <title>BJX</title>
-        <script src="/static/bjx/JS/jquery-3.2.1.min.js"></script>
-        <script src="/static/bjx/JS/stomp.js"></script>
-        <script src="/static/bjx/JS/ws-element.js"></script>
-        <link rel="stylesheet" type="text/css" href="/static/bjx/css/style.css"/>
+        <title>xforms-blackjack</title>
+        <script src="/static/xforms-static/JS/jquery-3.2.1.min.js"></script>
+        <script src="/static/xforms-static/JS/stomp.js"></script>
+        <script src="/static/xforms-static/JS/ws-element.js"></script>
+        <link rel="stylesheet" type="text/css" href="/static/xforms-static/css/style.css"/>
     </head>
     <body>
       {game:draw($self, "daniel3")}
@@ -503,11 +491,11 @@ function api:testGame() {
 };
 
 declare
-%rest:path("/bjx/test/lobby")
+%rest:path("/xforms-blackjack/test/lobby")
 %rest:GET
 %output:method("html")
 function api:testLobby() {
-  let $stylesheet := doc("../static/bjx/xslt/lobby.xsl")
+  let $stylesheet := doc("../static/xforms-static/xslt/lobby.xsl")
   let $games := <games>
   <game id="1" state="evaluated">
     <dealer>

@@ -1,4 +1,4 @@
-module namespace chat='xforms/bjx/chat';
+module namespace chat='xforms-blackjack/chat';
 
 declare function chat:newChat() {
   <chat/>
