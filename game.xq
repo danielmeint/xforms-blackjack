@@ -33,36 +33,25 @@ function game:play($self) {
   dealer:deal($self/dealer)
 };
 
-declare
-%updating
-function game:evaluate($self) {
-  for $player in $self/player[count(hand/card) >= 2]
-  return (
-    player:evaluate($player)
-  ),
-  replace value of node $self/@state with 'evaluated'
-};
-
-(: bug: if last player doubles, we do not 2x his bet before evaluating :)
-declare
-%updating
-function game:evaluateAfterHit($self) {
-  let $regularPlayers := $self/player[count(hand/card) >= 2][position() != last()]
-  let $lastPlayer := $self/player[count(hand/card) >= 2][position() = last()]
-  return (
-    for $p in $regularPlayers
-    return (
-      player:evaluate($p)
-    ),
-    player:evaluateAfterHit($lastPlayer),
-    replace value of node $self/@state with 'evaluated'
-  )
-};
-
 declare function game:latestId() as xs:double {
   if (exists($api:games/game)) 
   then (max($api:games/game/@id)) 
   else (0)
+};
+
+declare 
+%updating
+function game:evaluate($self, $afterHit as xs:boolean, $afterDouble as xs:boolean) {
+  let $regularPlayers := $self/player[count(hand/card) >= 2][position() != last()]
+  let $lastPlayer := $self/player[count(hand/card) >= 2][position() = last()]
+    return (
+    for $p in $regularPlayers
+    return (
+      player:evaluate($p, false(), false())
+    ),
+    player:evaluate($lastPlayer, $afterHit, $afterDouble),
+    replace value of node $self/@state with 'evaluated'
+  )
 };
 
 declare

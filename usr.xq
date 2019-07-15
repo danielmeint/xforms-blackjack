@@ -24,7 +24,7 @@ declare function usr:newUser($name, $balance, $highscore) {
 
 declare
 %updating
-function usr:win($self, $amount) {
+function usr:deposit($self, $amount) {
   let $newBalance := $self/balance/text() + $amount
   return (
     replace value of node $self/balance with $newBalance,
@@ -33,16 +33,4 @@ function usr:win($self, $amount) {
       replace value of node $self/highscore with $newBalance
     )
   )
-};
-
-declare
-%updating
-function usr:lose($self, $amount) {
-  replace value of node $self/balance with $self/balance/text() - $amount
-};
-
-declare
-%updating
-function usr:deposit($self, $amount) {
-  usr:win($self, $amount)
 };

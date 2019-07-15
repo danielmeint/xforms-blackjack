@@ -58,16 +58,37 @@ declare function hand:getOptimalSum($values as xs:integer*) {
   )
 };
 
-declare function hand:evaluate($self, $toBeat) as xs:string {
-  if ($self/@value <= 21 and ($self/@value > $toBeat or $toBeat > 21))
-  then (
-    'won'
+
+(: Achtung: nicht @value vergleichen!!!!! unbedingt @value/text() vergleichen, da bei @value z.B.: value='7' > value='20' gilt :)
+declare function hand:evaluate($self, $dealerHand) {
+  let $value := xs:integer($self/@value)
+  let $toBeat := xs:integer($dealerHand/@value)
+  
+  return (
+    if ($value = 21 and count($self/card) = 2)
+    then (
+      (: Blackjack means instant win unless the dealer also has Blackjack :)
+      if ($toBeat = 21 and count($dealerHand/card) = 2)
+      then (
+        'tied'
+      )
+      else (
+        'blackjack'
+      )
+    )
+    else if ($value <= 21 and (($value > $toBeat) or ($toBeat > 21)))
+    then (
+      'won'
+    )
+    else if ($value <= 21 and $value = $toBeat)
+    then (
+      'tied'
+    )
+    else (
+      'lost'
+    )
   )
-  else if ($self/@value <= 21 and $self/@value = $toBeat)
-  then (
-    'tied'
-  )
-  else (
-    'lost'
-  )
+  
+  
+
 };

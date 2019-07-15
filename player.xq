@@ -17,7 +17,6 @@ function player:joinGame($gameId as xs:integer, $name as xs:string) {
   let $game := $api:games/game[@id=$gameId]
   let $user := $api:users/user[@name=$name]
   let $balance := $user/balance/text()
-  let $trace := trace($balance)
   let $newPlayer := player:setName(player:newPlayer(), $name)
   let $trace := trace(concat($name, " joined game ", $gameId))
   let $msg := <message author="INFO">{$name} joined the game.</message>
@@ -72,11 +71,11 @@ function player:hit($self) {
   let $newHand := hand:addCard($self/hand, $game/dealer/deck/card[1])
   return (
     player:draw($self),
-    if ($newHand/@value >= 21)
+    if (xs:integer($newHand/@value) >= 21)
     then (
       if (player:isLast($self))
       then (
-        game:evaluateAfterHit($game)
+        game:evaluate($game, true(), false())
       )
       else (
         player:next($self)
@@ -111,13 +110,14 @@ declare
 %updating
 function player:double($self) {
   let $newBet := $self/bet * 2
+  let $game := $self/..
   return (
     replace value of node $self/bet with $newBet,
     player:draw($self),
     (: might trigger evaluate, but the drawn card is not recorded in the database yet .... :)
     if (player:isLast($self))
     then (
-      game:evaluateAfterHit($self/..)
+      game:evaluate($game, false(), true())
     ) else (
       player:next($self)
     )
@@ -158,7 +158,7 @@ function player:next($self) {
         game:play($game)
       ) else if ($game/@state = 'playing')
       then (
-        game:evaluate($game)
+        game:evaluate($game, false(), false())
       )
     )
   )
@@ -166,134 +166,97 @@ function player:next($self) {
 
 declare
 %updating
-function player:evaluate($self) {
-  player:evaluate($self, $self/../dealer/hand/@value)
-};
-
-declare
-%updating
-function player:evaluateAfterHit($self) {
+function player:evaluate($self, $afterHit as xs:boolean, $afterDouble as xs:boolean) {
+  let $user := player:getUser($self)
   let $game := $self/..
-  let $deck := $game/dealer/deck
-  let $hand := $self/hand
-  let $handAfterHit := hand:addCard($hand, $deck/card[1])
-  let $toBeat := $game/dealer/hand/@value
-  let $result := hand:evaluate($handAfterHit, $toBeat)
-
-  return (
-    if ($result = 'won')
+  let $dealer := $game/dealer
+  let $deck := $dealer/deck
+  let $hand := if ($afterHit or $afterDouble) then (hand:addCard($self/hand, $deck/card[1])) else ($self/hand)
+  let $bet  := if ($afterDouble) then (2 * $self/bet) else ($self/bet)
+  let $dealerHand := $dealer/hand
+  let $result := hand:evaluate($hand, $dealer/hand)
+  let $profit := 
+    if ($result = 'blackjack')
     then (
-      player:win($self)
-    )
-    else if ($result = 'tied')
+      floor(1.5 * $bet)
+    ) else if ($result = 'won')
     then (
-      player:tie($self)
+      $bet
+    ) else if ($result = 'lost')
+    then (
+      -1 * $bet
     ) else (
-      player:lose($self)
+      0
     )
-  )
-};
-
-declare
-%updating
-function player:evaluate($self, $toBeat) {
-  let $result := hand:evaluate($self/hand, $toBeat)
-  
   return (
-    if ($result = 'won')
-    then (
-      player:win($self)
-    )
-    else if ($result = 'tied')
-    then (
-      player:tie($self)
-    ) else (
-      player:lose($self)
-    )
-  )
-};
-
-declare
-%updating
-function player:win($self) {
-  let $user := player:getUser($self)
-  let $balance := $user/balance
-  let $bet  := $self/bet/text()
-  
-  return (
-    replace value of node $self/@state with "won",
-    usr:win($user, $bet)
-
-  )
-};
-
-declare
-%updating
-function player:tie($self) {
-  replace value of node $self/@state with "tied"
-};
-
-declare
-%updating
-function player:lose($self) {
-  let $user := player:getUser($self)
-  let $balance := $user/balance
-  let $bet  := $self/bet/text()
-  
-  return (
-    replace value of node $self/@state with "lost",
-    usr:lose($user, $bet)
+    replace value of node $self/profit with $profit,
+    usr:deposit($user, $profit)
   )
 };
 
 declare variable $player:defaultName := "undefined";
 declare variable $player:defaultState := "inactive";
 declare variable $player:defaultBet := 0;
+declare variable $player:defaultProfit := 0;
 declare variable $player:defaultHand := hand:newHand();
 
-declare function player:newPlayer($name, $state, $bet, $hand) {
+declare function player:newPlayer($name, $state, $bet, $profit, $hand) {
   <player name="{$name}" state="{$state}">
     <bet>{$bet}</bet>
+    <profit>{$profit}</profit>
     {$hand}
   </player>
 };
 
 declare function player:newPlayer() {
-  player:newPlayer($player:defaultName, $player:defaultState, $player:defaultBet, $player:defaultHand)
+  player:newPlayer($player:defaultName, $player:defaultState, $player:defaultBet, $player:defaultProfit, $player:defaultHand)
 };
 
 declare function player:reset($self) {
   let $name := $self/@name
   let $state := $player:defaultState
   let $bet := $player:defaultBet
+  let $profit := $player:defaultProfit
   let $hand := $player:defaultHand
-  return player:newPlayer($name, $state, $bet, $hand)
+  return player:newPlayer($name, $state, $bet, $profit, $hand)
 };
 
 declare function player:setName($self, $name) {
   let $state := $self/@state
   let $bet := $self/bet/text()
+  let $profit := $self/profit/text()
   let $hand := $self/hand
-  return player:newPlayer($name, $state, $bet, $hand)
+  return player:newPlayer($name, $state, $bet, $profit, $hand)
 };
 
 declare function player:setState($self, $state) {
   let $name := $self/@name
   let $bet := $self/bet/text()
+  let $profit := $self/profit/text()
   let $hand := $self/hand
-  return player:newPlayer($name, $state, $bet, $hand)
+  return player:newPlayer($name, $state, $bet, $profit, $hand)
 };
 
 declare function player:setBet($self, $bet) {
   let $name := $self/@name
   let $state := $self/@state
+  let $profit := $self/profit/text()
   let $hand := $self/hand
-  return player:newPlayer($name, $state, $bet, $hand)
+  return player:newPlayer($name, $state, $bet, $profit, $hand)
+};
+
+declare function player:setProfit($self, $profit) {
+  let $name := $self/@name
+  let $state := $self/@state
+  let $bet := $self/bet/text()
+  let $hand := $self/hand
+  return player:newPlayer($name, $state, $bet, $profit, $hand)
 };
 
 declare function player:setHand($self, $hand) {
   let $name := $self/@name
   let $state := $self/@state
   let $bet := $self/bet/text()
-  return player:newPlayer($name, $state, $bet, $hand)
+  let $profit := $self/profit/text()
+  return player:newPlayer($name, $state, $bet, $profit, $hand)
 };

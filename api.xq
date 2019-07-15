@@ -373,6 +373,29 @@ function api:chat($gameId, $msg) {
 };
 
 declare
+%rest:path("/xforms-blackjack/test")
+%rest:GET
+%output:method("html")
+function api:test() {
+  let $myHand :=
+        <hand value="21">
+        <card value="4" suit="spades"/>
+        <card value="7" suit="spades"/>
+        <card value="K" suit="diamonds"/>
+      </hand>
+  let $dealerHand := 
+  <hand value="19">
+  <card value="J" suit="spades"/>
+  <card value="9" suit="clubs"/>
+  </hand>
+  let $result := hand:evaluate($myHand, $dealerHand)
+  let $trace := trace($result)
+  return (
+    <div></div>
+  )
+};
+
+declare
 %rest:path("/xforms-blackjack/test/game")
 %rest:GET
 %output:method("html")
