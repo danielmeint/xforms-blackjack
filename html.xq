@@ -48,11 +48,11 @@ declare function html:menu() {
 
 };
 
-declare function html:login() {
+declare function html:login($error) {
   html:wrap(
   <div class="content">
     <form action='/xforms-blackjack/login' method='post'>
-      <p>Please enter your credentials</p>
+      <p class="error">{$error}</p>
       <table>
         <tr>
           <td><b>Name:</b></td>

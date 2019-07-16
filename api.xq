@@ -26,7 +26,7 @@ function api:entry() {
   then (
     html:menu() 
   ) else (
-    html:login()
+    web:redirect('/xforms-blackjack/login', map { 'error': 'Please enter your credentials.' })
   )
 };
 
@@ -40,6 +40,15 @@ function api:sign-up($error) {
 };
 
 declare
+%rest:GET
+%rest:path('xforms-blackjack/login')
+%output:method("html")
+%rest:query-param("error", "{$error}")
+function api:login($error) {
+    html:login($error)
+};
+
+declare
 %rest:POST
 %rest:path("/xforms-blackjack/signup")
 %rest:query-param("name", "{$name}")
@@ -49,29 +58,13 @@ function api:user-create(
   $name as xs:string,
   $pass as xs:string
 ) as empty-sequence() {
-  try {
-    if(user:exists($name)) then (
-      error((), 'User already exists.')
-    ) else (
-      user:create($name, $pass, 'none'),
-      usr:create($name)
-    ),
+  if (usr:exists($name))
+  then (
+    update:output(web:redirect("/xforms-blackjack/signup", map { 'error': 'User already exists.' }))
+  ) else (
+    usr:create($name, $pass),
     update:output(web:redirect("/xforms-blackjack"))
-  } catch * {
-    update:output(web:redirect("/xforms-blackjack/signup", map { 'error': $err:description }))
-  }
-};
-
-declare
-%rest:POST
-%rest:path('/xforms-blackjack/signup-check')
-%rest:query-param('name', '{$name}')
-%rest:query-param('pass', '{$pass}')
-function api:signup-check(
-  $name as xs:string,
-  $pass as xs:string
-) as element(rest:response) {
-  
+  )
 };
 
 declare
@@ -82,14 +75,14 @@ declare
 function api:login-check(
   $name  as xs:string,
   $pass  as xs:string
-) as element(rest:response) {
-  try {
-    user:check($name, $pass),
-    session:set('name', $name)
-  } catch user:* {
-    (: login fails: no session info is set :)
-  },
-  web:redirect('/xforms-blackjack')
+) {
+  if (usr:check($name, $pass))
+  then (
+    session:set('name', $name),
+    web:redirect('/xforms-blackjack')
+  ) else (
+    web:redirect('/xforms-blackjack/login', map { 'error': 'Incorrect name or password.' })
+  )
 };
 
 declare
@@ -149,7 +142,7 @@ function api:accessGames() {
   then (
     html:games()
   ) else (
-    html:login()
+     web:redirect('/xforms-blackjack/login', map { 'error': 'Please enter your credentials.' })
   )
 };
 
@@ -162,7 +155,7 @@ function api:accessHighscores() {
   then (
     html:highscores() 
   ) else (
-    html:login()
+     web:redirect('/xforms-blackjack/login', map { 'error': 'Please enter your credentials.' })
   )
 };
 
@@ -222,7 +215,7 @@ function api:accessGame($gameId) {
   then (
     api:getGame($gameId)
   ) else (
-    html:login()
+     web:redirect('/xforms-blackjack/login', map { 'error': 'Please enter your credentials.' })
   )
 };
 
